@@ -7,8 +7,8 @@ RATE = 44100
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "Assets", "StreamingAssets", "Music")
 os.makedirs(OUT_DIR, exist_ok=True)
 
-def encode_mp3(audio_stereo, filepath, bitrate=192):
-    """Encode float32 stereo numpy array [-1, 1] into MP3."""
+def encode_mp3(audio_stereo, filepath, bitrate=320):
+    """Encode float32 stereo numpy array [-1, 1] into 320 kbps high-quality MP3."""
     audio_int16 = np.clip(audio_stereo * 32767.0, -32768, 32767).astype(np.int16)
     interleaved = np.empty((audio_int16.shape[0] * 2,), dtype=np.int16)
     interleaved[0::2] = audio_int16[:, 0]
@@ -18,14 +18,14 @@ def encode_mp3(audio_stereo, filepath, bitrate=192):
     encoder.set_bit_rate(bitrate)
     encoder.set_in_sample_rate(RATE)
     encoder.set_channels(2)
-    encoder.set_quality(2)
+    encoder.set_quality(0)  # Highest quality psychoacoustic model
     
     mp3_data = encoder.encode(interleaved.tobytes())
     mp3_data += encoder.flush()
     
     with open(filepath, "wb") as f:
         f.write(mp3_data)
-    print(f"Generated {filepath} ({len(mp3_data)/1024:.1f} KB)")
+    print(f"Generated {filepath} ({len(mp3_data)/1024:.1f} KB @ {bitrate} kbps)")
 
 def midi_to_hz(m):
     return 440.0 * (2.0 ** ((m - 69) / 12.0))

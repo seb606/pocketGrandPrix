@@ -40,6 +40,15 @@ public static class GPArt {
     public static GameObject Cylinder(Transform parent, string name, Vector3 p, Vector3 s, Material m) { return Shape(parent, name, PrimitiveType.Cylinder, p, s, m); }
 
     public static Transform Car(Transform parent, int color) {
+        var prefab = Resources.Load<GameObject>("Cars/Car_" + (color % 5));
+        if (prefab != null) {
+            var instance = Object.Instantiate(prefab, parent);
+            instance.name = "Carrosserie_3D";
+            instance.transform.localPosition = Vector3.zero;
+            instance.transform.localRotation = Quaternion.identity;
+            return instance.transform;
+        }
+
         string[] colors = { "FF4838", "2BE4D8", "FFC83B", "9A7BFF", "FF5AA8" };
         var root = new GameObject("Carrosserie").transform;
         root.SetParent(parent, false);
@@ -139,6 +148,41 @@ public static class GPArt {
         var core = Cylinder(root.transform, "Coeur", new Vector3(0, 0, -.28f), new Vector3(.09f, .30f, .09f), Mat("00F6FF", 1f));
         core.transform.localRotation = Quaternion.Euler(90, 0, 0);
         root.SetActive(false);
+        return root;
+    }
+
+    public static GameObject JumpRamp(Transform parent) {
+        var root = new GameObject("Tremplin");
+        root.transform.SetParent(parent, false);
+        var baseMat = Mat("F5B700", .85f, .1f);
+        var stripeMat = Mat("1A232E", .4f);
+        var ramp = Box(root.transform, "Planche", new Vector3(0, .26f, 0), new Vector3(3.2f, .14f, 2.4f), baseMat);
+        ramp.transform.localRotation = Quaternion.Euler(-15, 0, 0);
+        for (int k = -1; k <= 1; k++) {
+            Box(ramp.transform, "Bande", new Vector3(k * 0.85f, .078f, 0), new Vector3(.28f, .02f, 2.38f), stripeMat);
+        }
+        var sideL = Box(root.transform, "BordG", new Vector3(-1.62f, .30f, 0), new Vector3(.14f, .38f, 2.4f), stripeMat);
+        sideL.transform.localRotation = Quaternion.Euler(-15, 0, 0);
+        var sideR = Box(root.transform, "BordD", new Vector3(1.62f, .30f, 0), new Vector3(.14f, .38f, 2.4f), stripeMat);
+        sideR.transform.localRotation = Quaternion.Euler(-15, 0, 0);
+        return root;
+    }
+
+    public static GameObject TrafficCone(Transform parent) {
+        var root = new GameObject("Cone");
+        root.transform.SetParent(parent, false);
+        Box(root.transform, "Socle", new Vector3(0, .05f, 0), new Vector3(.65f, .1f, .65f), Mat("FF4500", .7f));
+        Cylinder(root.transform, "ConeCorps", new Vector3(0, .45f, 0), new Vector3(.38f, .8f, .38f), Mat("FF4500", .7f));
+        Cylinder(root.transform, "BandeBlanche", new Vector3(0, .42f, 0), new Vector3(.40f, .22f, .40f), Mat("FFFFFF", .9f));
+        return root;
+    }
+
+    public static GameObject Barrel(Transform parent) {
+        var root = new GameObject("Baril");
+        root.transform.SetParent(parent, false);
+        Cylinder(root.transform, "Fut", new Vector3(0, .55f, 0), new Vector3(.72f, 1.1f, .72f), Mat("CC2222", .7f));
+        Cylinder(root.transform, "Anneau1", new Vector3(0, .32f, 0), new Vector3(.76f, .1f, .76f), Mat("FFFFFF", .8f));
+        Cylinder(root.transform, "Anneau2", new Vector3(0, .78f, 0), new Vector3(.76f, .1f, .76f), Mat("FFFFFF", .8f));
         return root;
     }
 

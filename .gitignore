@@ -6,3 +6,4 @@
 /Builds/
 *.csproj
 *.sln
+*.log

@@ -284,9 +284,6 @@ public sealed class GPUi : MonoBehaviour {
             Hold("FREIN", new Vector2(1, 0), new Vector2(-300, 85), new Vector2(110, 105), v => Brake = v);
             Hold("DRIFT", new Vector2(1, 0), new Vector2(-180, 85), new Vector2(115, 105), v => Drift = v);
             Hold("TURBO", new Vector2(1, 0), new Vector2(-60, 105), new Vector2(115, 145), v => Boost = v);
-        } else {
-            // Mode ordinateur : interface épurée sans boutons tactiles, avec guide clavier
-            Txt(layer, "[Q / D ou ◄ / ►] Direction   ·   [S ou ▼] Freiner   ·   [ESPACE] Dérapage   ·   [MAJ] Turbo   ·   [E] Arme", new Vector2(0, 24), new Vector2(1100, 36), 18, muted);
         }
     }
 

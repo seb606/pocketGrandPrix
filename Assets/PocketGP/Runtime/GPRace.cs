@@ -34,6 +34,16 @@ public sealed class GPRace : MonoBehaviour {
     }
     readonly List<Pickup> pickups = new List<Pickup>();
 
+    sealed class Hazard {
+        public Transform Visual;
+        public Vector3 Position;
+        public bool IsRamp;
+        public float Radius;
+        public float Respawn;
+    }
+    readonly List<Hazard> hazards = new List<Hazard>();
+    float bumpSoundCooldown;
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Bootstrap() {
         if (!FindFirstObjectByType<GPRace>()) new GameObject("Pocket Grand Prix").AddComponent<GPRace>();
@@ -91,6 +101,7 @@ public sealed class GPRace : MonoBehaviour {
         }
         Cars.Clear();
         pickups.Clear();
+        hazards.Clear();
         FinishOrder.Clear();
         if (Weapons) Weapons.Clear();
 
@@ -129,6 +140,31 @@ public sealed class GPRace : MonoBehaviour {
                 coin.transform.localRotation = Quaternion.Euler(90, 0, 0);
             }
             pickups.Add(new Pickup { Visual = root, Position = p, Turbo = turbo, ItemBox = isBox });
+        }
+
+        // Éléments interactifs du circuit : Tremplins et Obstacles (cônes & barils)
+        int totalPts = Track.Points.Count;
+        int[] rampIndices = { (int)(totalPts * 0.32f), (int)(totalPts * 0.74f) };
+        foreach (int rIdx in rampIndices) {
+            Vector3 pos = Track.Points[rIdx];
+            var ramp = GPArt.JumpRamp(world);
+            ramp.transform.position = pos;
+            ramp.transform.rotation = Quaternion.LookRotation(Track.Tangent(rIdx));
+            hazards.Add(new Hazard { Visual = ramp.transform, Position = pos, IsRamp = true, Radius = 2.6f });
+        }
+
+        int[] obsIndices = { (int)(totalPts * 0.16f), (int)(totalPts * 0.44f), (int)(totalPts * 0.58f), (int)(totalPts * 0.88f) };
+        for (int k = 0; k < obsIndices.Length; k++) {
+            int pt = obsIndices[k];
+            Vector3 pos = Track.Points[pt];
+            Vector3 right = Vector3.Cross(Vector3.up, Track.Tangent(pt));
+            bool isBarrel = k % 2 == 1;
+            float sideOffset = (k % 2 == 0 ? 1.5f : -1.5f);
+            Vector3 obsPos = pos + right * sideOffset;
+            var obs = isBarrel ? GPArt.Barrel(world) : GPArt.TrafficCone(world);
+            obs.transform.position = obsPos;
+            obs.transform.rotation = Quaternion.Euler(0, Random.Range(0, 360), 0);
+            hazards.Add(new Hazard { Visual = obs.transform, Position = obsPos, IsRamp = false, Radius = isBarrel ? 1.4f : 1.2f });
         }
 
         Cam.transform.position = new Vector3(0, 65, -35);
@@ -264,13 +300,55 @@ public sealed class GPRace : MonoBehaviour {
                 if (Cars[i].FinishTime >= 0 || Cars[j].FinishTime >= 0) continue;
                 Vector3 delta = Cars[i].transform.position - Cars[j].transform.position;
                 float d = delta.magnitude;
-                if (d < 1.15f) {
+                if (d < 1.35f) {
                     Vector3 n = d > .001f ? delta / d : Vector3.right;
-                    Vector3 push = n * (1.15f - d) * .5f;
+                    Vector3 push = n * (1.35f - d) * .65f;
                     Cars[i].transform.position += push;
                     Cars[j].transform.position -= push;
-                    Cars[i].Velocity += n * 1.4f;
-                    Cars[j].Velocity -= n * 1.4f;
+                    Cars[i].Velocity += n * 2.5f;
+                    Cars[j].Velocity -= n * 2.5f;
+                    if (Cars[i].Human || Cars[j].Human) {
+                        if (bumpSoundCooldown <= 0) {
+                            Audio.PlayBump();
+                            bumpSoundCooldown = 0.22f;
+                        }
+                        Cars[i].SpawnSparks(Cars[i].transform.position);
+                    }
+                }
+            }
+        }
+        if (bumpSoundCooldown > 0) bumpSoundCooldown -= dt;
+
+        // Interaction avec les tremplins et obstacles
+        foreach (var h in hazards) {
+            if (h.Respawn > 0) {
+                h.Respawn -= dt;
+                h.Visual.gameObject.SetActive(h.Respawn <= 0);
+                if (h.Respawn <= 0) {
+                    h.Visual.position = h.Position;
+                }
+                continue;
+            }
+
+            foreach (var car in Cars) {
+                if (car.FinishTime >= 0) continue;
+                float d = Vector3.Distance(car.transform.position, h.Visual.position);
+                if (d < h.Radius) {
+                    if (h.IsRamp) {
+                        // Tremplin : propulsion en l'air si la voiture avance vers le tremplin
+                        if (Vector3.Dot(car.Velocity, h.Visual.forward) > 2f) {
+                            car.Jump(14f);
+                        }
+                    } else {
+                        // Percussion d'obstacle
+                        Vector3 push = (car.transform.position - h.Position).normalized;
+                        if (push.sqrMagnitude < 0.01f) push = car.transform.forward;
+                        car.HitObstacle(push * 4.5f);
+                        h.Visual.position += car.transform.forward * 2.2f + Vector3.up * 1.2f;
+                        h.Visual.rotation = Quaternion.Euler(Random.Range(-35, 35), Random.Range(0, 360), Random.Range(-35, 35));
+                        h.Respawn = 4.5f;
+                    }
+                    break;
                 }
             }
         }

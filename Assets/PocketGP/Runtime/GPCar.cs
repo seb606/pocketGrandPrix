@@ -6,6 +6,7 @@ public sealed class GPCar : MonoBehaviour {
     public int Id, Gate = 1, Passed, Laps;
     public float Heading, Speed, Nitro = 1, FinishTime = -1, DriftCharge;
     public Vector3 Velocity;
+    public float Altitude, VerticalVelocity;
     public bool Human { get { return Id == 0; } }
     public float RankProgress { get { return Passed * 1000 - Vector3.Distance(transform.position, Game.Track.Gates[Gate]); } }
     public GPRace Game;
@@ -75,6 +76,18 @@ public sealed class GPCar : MonoBehaviour {
             return;
         }
 
+        // Gestion du saut et de la gravité
+        if (Altitude > 0 || VerticalVelocity != 0) {
+            VerticalVelocity -= 32f * dt;
+            Altitude += VerticalVelocity * dt;
+            if (Altitude <= 0) {
+                Altitude = 0;
+                VerticalVelocity = 0;
+                if (Human) Game.Audio.PlayLand();
+                SpawnSparks(transform.position);
+            }
+        }
+
         // Effet de rotation en tête-à-queue
         if (spinTimer > 0) {
             spinTimer -= dt;
@@ -118,6 +131,19 @@ public sealed class GPCar : MonoBehaviour {
             throttle = Mathf.Abs(angle) > 65 ? .35f : 1;
             boost = Mathf.Abs(angle) < 10 && Nitro > .45f && roadDistance < 2;
 
+            // Comportement IA agressif : bousculer le joueur s'il est au coude-à-coude
+            var humanCar = Game.Cars != null && Game.Cars.Count > 0 ? Game.Cars[0] : null;
+            if (humanCar != null && humanCar.FinishTime < 0) {
+                Vector3 toPlayer = humanCar.transform.position - transform.position;
+                float dist = toPlayer.magnitude;
+                if (dist < 3.2f) {
+                    float side = Vector3.Dot(transform.right, toPlayer.normalized);
+                    if (Mathf.Abs(side) > 0.25f) {
+                        steer = Mathf.Lerp(steer, Mathf.Sign(side), 0.6f);
+                    }
+                }
+            }
+
             if (CurrentItem != GPItemType.None) {
                 aiItemTimer -= dt;
                 if (aiItemTimer <= 0) {
@@ -132,6 +158,23 @@ public sealed class GPCar : MonoBehaviour {
         }
 
         float max = (Human ? 18.5f : 16.3f + Game.Difficulty * 1.5f + Id * .15f);
+
+        // Système d'ajustement dynamique de l'IA (Rubber-banding) selon la difficulté
+        if (!Human && Game.Cars != null && Game.Cars.Count > 0) {
+            var playerCar = Game.Cars[0];
+            if (playerCar != null && playerCar.FinishTime < 0) {
+                float lead = RankProgress - playerCar.RankProgress;
+                if (lead > 30f) {
+                    // Ralentir l'IA devant pour permettre au joueur de revenir au classement
+                    float factor = Game.Difficulty == 0 ? 0.35f : Game.Difficulty == 1 ? 0.18f : 0.05f;
+                    float damp = Mathf.Clamp01(lead / 320f) * factor;
+                    max *= (1f - damp);
+                } else if (lead < -80f && Game.Difficulty == 2) {
+                    // En difficile, légère accélération si en retard
+                    max *= 1.08f;
+                }
+            }
+        }
         if (roadDistance > Game.Track.Width * .5f) max *= .46f;
 
         bool isBoosting = boost || boostTime > 0;
@@ -218,7 +261,9 @@ public sealed class GPCar : MonoBehaviour {
 
         previous = transform.position;
         transform.position += Velocity * dt;
-        body.localRotation = Quaternion.Euler(Mathf.Sin(Time.time * 22) * Speed * .025f, 0, -smoothedSteer * Speed * .32f);
+        body.localPosition = new Vector3(0, Altitude, 0);
+        float pitch = Mathf.Clamp(-VerticalVelocity * 1.6f, -25f, 25f);
+        body.localRotation = Quaternion.Euler(Mathf.Sin(Time.time * 22) * Speed * .025f + pitch, 0, -smoothedSteer * Speed * .32f);
 
         // --- VALIDATION ROBUSTE DES TOURS ET CHECKPOINTS ---
         int nextGate = (Gate + 1) % Game.Track.Gates.Count;
@@ -329,12 +374,41 @@ public sealed class GPCar : MonoBehaviour {
         transform.rotation = Quaternion.Euler(0, Heading, 0);
         Velocity = Vector3.zero;
         Speed = 0;
+        Altitude = 0;
+        VerticalVelocity = 0;
         rescueTimer = 0;
         spinTimer = 0;
         leftTrail.Clear();
         rightTrail.Clear();
         if (flameL) flameL.SetActive(false);
         if (flameR) flameR.SetActive(false);
+    }
+
+    public void Jump(float strength = 13.5f) {
+        if (Altitude > 0.15f) return;
+        VerticalVelocity = strength;
+        Altitude = 0.05f;
+        Speed = Mathf.Max(Speed, 15f);
+        if (Human) {
+            Game.Notify("SAUT !");
+            Game.Audio.PlayJump();
+        }
+    }
+
+    public void HitObstacle(Vector3 push) {
+        if (HasShield) {
+            HasShield = false;
+            if (shieldObj) shieldObj.SetActive(false);
+            if (Human) Game.Notify("BOUCLIER ABSORBÉ !");
+            return;
+        }
+        SpawnSparks(transform.position);
+        Speed *= 0.4f;
+        Velocity = Velocity * 0.35f + push;
+        if (Human) {
+            Game.Notify("OBSTACLE !");
+            Game.Audio.PlayBump();
+        }
     }
 
     public void Pad() {
