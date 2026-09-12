@@ -141,9 +141,7 @@ public sealed class GPRace : MonoBehaviour {
 
             if (turbo) {
                 root.rotation = Quaternion.LookRotation(Track.Tangent(i));
-                for (int k = 0; k < 3; k++) {
-                    GPArt.Box(root, "Fleche", new Vector3(0, .07f, k * .65f - .65f), new Vector3(3, .055f, .26f), GPArt.Mat("4EF0D1", .6f));
-                }
+                GPArt.TurboPad(root);
             } else if (isBox) {
                 GPArt.ItemBox(root);
                 root.position = p + Vector3.up * 0.9f;

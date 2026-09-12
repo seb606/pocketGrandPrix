@@ -6,6 +6,7 @@ namespace PocketGP {
 public sealed class GPAudio : MonoBehaviour {
     AudioSource music, engine, skid, turbo, fx;
     AudioClip beep, coin, shootClip, explodeClip, splatClip, lapClip, itemClip, turboBlast, blowOffClip, jumpClip, landClip, bumpClip;
+    AudioClip voiceMissile, voiceOil, voiceTurbo, voiceShield;
     float musicVolume = .35f, effectsVolume = .65f;
     bool wasTurbo;
 
@@ -141,6 +142,12 @@ public sealed class GPAudio : MonoBehaviour {
         jumpClip = BuildJump(rate);
         landClip = BuildLand(rate);
         bumpClip = BuildBump(rate);
+
+        // Voix féminines annonciatrices des bonus d'armes
+        voiceMissile = Resources.Load<AudioClip>("Audio/voice_missile");
+        voiceOil = Resources.Load<AudioClip>("Audio/voice_huile");
+        voiceTurbo = Resources.Load<AudioClip>("Audio/voice_turbo");
+        voiceShield = Resources.Load<AudioClip>("Audio/voice_bouclier");
     }
 
     AudioClip BuildBlowOff(int rate) {
@@ -358,6 +365,24 @@ public sealed class GPAudio : MonoBehaviour {
     public void PlayJump() { if (jumpClip) fx.PlayOneShot(jumpClip, effectsVolume * 0.75f); }
     public void PlayLand() { if (landClip) fx.PlayOneShot(landClip, effectsVolume * 0.85f); }
     public void PlayBump() { if (bumpClip) fx.PlayOneShot(bumpClip, effectsVolume * 0.80f); }
+
+    public void PlayBonusVoice(GPItemType item) {
+        AudioClip clip = null;
+        switch (item) {
+            case GPItemType.Missile: clip = voiceMissile; break;
+            case GPItemType.OilSlick: clip = voiceOil; break;
+            case GPItemType.SuperBoost: clip = voiceTurbo; break;
+            case GPItemType.Shield: clip = voiceShield; break;
+        }
+        if (clip && fx) {
+            fx.PlayOneShot(clip, effectsVolume * 1.15f);
+        }
+    }
+
+    public void PlayCrash() {
+        if (explodeClip && fx) fx.PlayOneShot(explodeClip, effectsVolume * 0.85f);
+        if (bumpClip && fx) fx.PlayOneShot(bumpClip, effectsVolume * 1.0f);
+    }
 
     void OnDestroy() {
         if (music && music.clip) Destroy(music.clip);

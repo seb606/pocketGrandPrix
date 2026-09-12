@@ -24,6 +24,120 @@ public static class GPArt {
         return m;
     }
 
+    public static Material MatTransparent(Color color, float gloss = 0.85f, float metal = 0.15f) {
+        string key = "trans_" + ColorUtility.ToHtmlStringRGBA(color) + "_" + gloss + "_" + metal;
+        if (cache.ContainsKey(key)) return cache[key];
+        var shader = Shader.Find("Standard");
+        var m = new Material(shader);
+        m.color = color;
+        m.SetFloat("_Mode", 3);
+        m.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        m.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        m.SetInt("_ZWrite", 0);
+        m.DisableKeyword("_ALPHATEST_ON");
+        m.EnableKeyword("_ALPHABLEND_ON");
+        m.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        m.renderQueue = 3000;
+        m.SetFloat("_Glossiness", gloss);
+        m.SetFloat("_Metallic", metal);
+        cache[key] = m;
+        return m;
+    }
+
+    public static Material MatEmissive(Color color, Color emission, float intensity = 2.0f) {
+        string key = "emiss_" + ColorUtility.ToHtmlStringRGB(color) + "_" + ColorUtility.ToHtmlStringRGB(emission) + "_" + intensity;
+        if (cache.ContainsKey(key)) return cache[key];
+        var shader = Shader.Find("Standard");
+        var m = new Material(shader);
+        m.color = color;
+        m.EnableKeyword("_EMISSION");
+        m.SetColor("_EmissionColor", emission * intensity);
+        m.SetFloat("_Glossiness", 0.9f);
+        cache[key] = m;
+        return m;
+    }
+
+    static readonly Dictionary<GPTrack.SurfaceType, Material> roadMaterials = new Dictionary<GPTrack.SurfaceType, Material>();
+
+    public static Material GetRoadMaterial(GPTrack.SurfaceType surface) {
+        if (roadMaterials.ContainsKey(surface)) return roadMaterials[surface];
+
+        int size = 128;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, true);
+        tex.wrapMode = TextureWrapMode.Repeat;
+        tex.filterMode = FilterMode.Bilinear;
+        tex.anisoLevel = 16;
+
+        Color[] pixels = new Color[size * size];
+
+        for (int y = 0; y < size; y++) {
+            float v = y / (float)size;
+            for (int x = 0; x < size; x++) {
+                float u = x / (float)size;
+                float noise = (Mathf.PerlinNoise(u * 12f, v * 12f) - 0.5f) * 0.08f;
+                Color col;
+
+                switch (surface) {
+                    case GPTrack.SurfaceType.Asphalt:
+                    default:
+                        float baseGrey = 0.20f + noise;
+                        col = new Color(baseGrey, baseGrey * 1.05f, baseGrey * 1.12f, 1f);
+                        if ((u >= 0.05f && u <= 0.09f) || (u >= 0.91f && u <= 0.95f)) {
+                            col = Color.Lerp(col, new Color(0.92f, 0.94f, 0.96f), 0.88f);
+                        }
+                        if (u >= 0.485f && u <= 0.515f && (v % 0.5f < 0.28f)) {
+                            col = Color.Lerp(col, new Color(0.95f, 0.95f, 0.92f), 0.85f);
+                        }
+                        break;
+
+                    case GPTrack.SurfaceType.Parquet:
+                        float plank = Mathf.Floor(u * 8f);
+                        float grain = Mathf.Sin(v * 40f + plank * 1.5f) * 0.04f + noise;
+                        col = (plank % 2 == 0) ? new Color(0.58f + grain, 0.38f + grain * 0.8f, 0.20f)
+                                               : new Color(0.50f + grain, 0.32f + grain * 0.8f, 0.16f);
+                        if (Mathf.Abs(u * 8f - Mathf.Round(u * 8f)) < 0.05f) col *= 0.65f;
+                        break;
+
+                    case GPTrack.SurfaceType.Dirt:
+                        float dirtNoise = Mathf.PerlinNoise(u * 20f, v * 20f) * 0.12f;
+                        col = new Color(0.42f + dirtNoise, 0.29f + dirtNoise * 0.8f, 0.18f + dirtNoise * 0.5f);
+                        break;
+
+                    case GPTrack.SurfaceType.Sand:
+                        float ripple = Mathf.Sin(v * 18f + Mathf.Sin(u * 6f) * 2f) * 0.06f;
+                        col = new Color(0.85f + ripple + noise, 0.72f + ripple * 0.8f, 0.38f + ripple * 0.5f);
+                        break;
+
+                    case GPTrack.SurfaceType.Snow:
+                        float ice = Mathf.PerlinNoise(u * 15f, v * 15f) * 0.08f;
+                        col = new Color(0.88f + ice, 0.93f + ice, 0.98f);
+                        if ((u >= 0.06f && u <= 0.10f) || (u >= 0.90f && u <= 0.94f)) {
+                            col = new Color(0.35f, 0.65f, 0.92f);
+                        }
+                        break;
+
+                    case GPTrack.SurfaceType.Metropolis:
+                        float darkTarmac = 0.14f + noise * 0.5f;
+                        col = new Color(darkTarmac, darkTarmac * 1.1f, darkTarmac * 1.25f);
+                        if (u >= 0.04f && u <= 0.08f) col = new Color(0.0f, 0.95f, 1.0f);
+                        else if (u >= 0.92f && u <= 0.96f) col = new Color(1.0f, 0.15f, 0.75f);
+                        else if (u >= 0.485f && u <= 0.515f && (v % 0.4f < 0.22f)) col = new Color(0.0f, 0.9f, 0.9f);
+                        break;
+                }
+                pixels[y * size + x] = col;
+            }
+        }
+        tex.SetPixels(pixels);
+        tex.Apply();
+
+        var mat = new Material(Shader.Find("Standard"));
+        mat.mainTexture = tex;
+        mat.SetFloat("_Glossiness", surface == GPTrack.SurfaceType.Parquet ? 0.75f : surface == GPTrack.SurfaceType.Snow ? 0.60f : 0.30f);
+        mat.SetFloat("_Metallic", surface == GPTrack.SurfaceType.Metropolis ? 0.25f : 0.05f);
+        roadMaterials[surface] = mat;
+        return mat;
+    }
+
     public static GameObject Shape(Transform parent, string name, PrimitiveType type, Vector3 p, Vector3 scale, Material mat) {
         var o = GameObject.CreatePrimitive(type);
         o.name = name;
@@ -57,19 +171,29 @@ public static class GPArt {
             instance.transform.localPosition = Vector3.zero;
             instance.transform.localRotation = Quaternion.identity;
 
-            Color[] driverColors = {
-                new Color(0.92f, 0.15f, 0.15f),
-                new Color(0.05f, 0.85f, 0.82f),
-                new Color(0.98f, 0.82f, 0.12f),
-                new Color(0.20f, 0.40f, 0.98f),
-                new Color(0.96f, 0.40f, 0.70f)
-            };
-            Color col = driverColors[color % 5];
-            Vector3 driverPos = (model == 1) ? new Vector3(0, 0.28f, 0.08f) :
-                                (model == 2) ? new Vector3(-0.25f, 0.30f, -0.06f) :
-                                               new Vector3(-0.22f, 0.28f, -0.06f);
-            float driverScale = (model == 1) ? 1.05f : 0.92f;
-            Driver(instance.transform, driverPos, Vector3.one * driverScale, col);
+            // Pilote ajouté UNIQUEMENT pour la F1 (model == 1)
+            if (model == 1) {
+                Color[] suitColors = {
+                    new Color(0.92f, 0.15f, 0.15f), // Rouge
+                    new Color(0.05f, 0.85f, 0.82f), // Cyan
+                    new Color(0.98f, 0.82f, 0.12f), // Jaune
+                    new Color(0.20f, 0.40f, 0.98f), // Bleu
+                    new Color(0.96f, 0.40f, 0.70f)  // Rose
+                };
+                // Couleurs de casque contrastées nettement différentes de la voiture
+                Color[] helmetColors = {
+                    new Color(1.0f, 0.88f, 0.05f),  // Voiture Rouge -> Casque Jaune Fluo (style Senna)
+                    new Color(1.0f, 0.40f, 0.10f),  // Voiture Cyan -> Casque Orange Vif
+                    new Color(0.12f, 0.35f, 0.95f), // Voiture Jaune -> Casque Bleu Roi
+                    new Color(0.40f, 0.95f, 0.15f), // Voiture Bleue -> Casque Vert Lime Fluo
+                    new Color(0.15f, 0.15f, 0.18f)  // Voiture Rose -> Casque Noir Carbone
+                };
+                Color suitCol = suitColors[color % 5];
+                Color helmetCol = helmetColors[color % 5];
+                Vector3 driverPos = new Vector3(0, 0.28f, 0.08f);
+                float driverScale = 1.05f;
+                Driver(instance.transform, driverPos, Vector3.one * driverScale, suitCol, helmetCol);
+            }
 
             return instance.transform;
         }
@@ -127,11 +251,68 @@ public static class GPArt {
     public static GameObject ItemBox(Transform parent) {
         var root = new GameObject("Boite Objet");
         root.transform.SetParent(parent, false);
-        var cube = Box(root.transform, "Cube", Vector3.zero, Vector3.one * 1.05f, Mat("FFD23F", .85f, .2f));
+
+        // Cube extérieur en cristal translucide
+        var outerMat = MatTransparent(new Color(0.20f, 0.82f, 1.0f, 0.42f), 0.95f, 0.15f);
+        var cube = Box(root.transform, "CubeCristal", Vector3.zero, Vector3.one * 1.05f, outerMat);
         cube.transform.localRotation = Quaternion.Euler(45, 45, 0);
-        var inner = Box(root.transform, "Centre", Vector3.zero, Vector3.one * 0.75f, Mat("FF6B6B", .9f, .4f));
+
+        // Arêtes néon luminescentes
+        var frameMat = MatEmissive(Hex("00F0FF"), Hex("00F0FF"), 2.2f);
+        Box(cube.transform, "Bordure_H", new Vector3(0, 0.52f, 0), new Vector3(1.04f, 0.05f, 1.04f), frameMat);
+        Box(cube.transform, "Bordure_B", new Vector3(0, -0.52f, 0), new Vector3(1.04f, 0.05f, 1.04f), frameMat);
+
+        // Diamant intérieur tournoyant doré
+        var innerMat = MatEmissive(Hex("FFD23F"), Hex("FF9F1C"), 2.8f);
+        var inner = Box(root.transform, "Diamant", Vector3.zero, Vector3.one * 0.50f, innerMat);
+        inner.transform.localRotation = Quaternion.Euler(45, 45, 45);
+
+        // Halo lumineux doux
+        var lightObj = new GameObject("HaloBox");
+        lightObj.transform.SetParent(root.transform, false);
+        var l = lightObj.AddComponent<Light>();
+        l.type = LightType.Point;
+        l.color = Hex("00F0FF");
+        l.range = 3.6f;
+        l.intensity = 1.4f;
+
         var anim = root.AddComponent<GPAnimatedDecor>();
         anim.Type = GPAnimType.ItemBox;
+        anim.Part1 = inner.transform;
+        return root;
+    }
+
+    public static GameObject TurboPad(Transform parent) {
+        var root = new GameObject("Pad Turbo Glow");
+        root.transform.SetParent(parent, false);
+
+        var glowMat = MatEmissive(Hex("00FFAA"), Hex("00FFAA"), 3.2f);
+        var baseMat = MatTransparent(new Color(0.0f, 0.95f, 0.65f, 0.35f), 0.85f, 0.3f);
+
+        // Plaque au sol luminescente
+        Box(root.transform, "SocleGlow", new Vector3(0, 0.025f, 0), new Vector3(3.2f, 0.015f, 2.8f), baseMat);
+
+        // 3 séries de doubles chevrons en V ">>>" pointant vers l'avant
+        for (int k = -1; k <= 1; k++) {
+            float z = k * 0.75f;
+            var wingL = Box(root.transform, "Chevron_L", new Vector3(-0.62f, 0.065f, z - 0.18f), new Vector3(0.26f, 0.045f, 1.25f), glowMat);
+            wingL.transform.localRotation = Quaternion.Euler(0, 32f, 0);
+
+            var wingR = Box(root.transform, "Chevron_R", new Vector3(0.62f, 0.065f, z - 0.18f), new Vector3(0.26f, 0.045f, 1.25f), glowMat);
+            wingR.transform.localRotation = Quaternion.Euler(0, -32f, 0);
+
+            Sphere(root.transform, "PointeChevron", new Vector3(0, 0.07f, z + 0.36f), Vector3.one * 0.28f, glowMat);
+        }
+
+        var lightObj = new GameObject("LumierePad");
+        lightObj.transform.SetParent(root.transform, false);
+        lightObj.transform.localPosition = new Vector3(0, 0.45f, 0);
+        var l = lightObj.AddComponent<Light>();
+        l.type = LightType.Point;
+        l.color = Hex("00FFAA");
+        l.range = 3.5f;
+        l.intensity = 1.6f;
+
         return root;
     }
 
@@ -319,13 +500,19 @@ public static class GPArt {
     }
 
     public static GameObject Driver(Transform parent, Vector3 localPos, Vector3 localScale, Color suitColor) {
+        return Driver(parent, localPos, localScale, suitColor, new Color(1.0f, 0.88f, 0.05f));
+    }
+
+    public static GameObject Driver(Transform parent, Vector3 localPos, Vector3 localScale, Color suitColor, Color helmetColor) {
         var root = new GameObject("Pilote");
         root.transform.SetParent(parent, false);
         root.transform.localPosition = localPos;
         root.transform.localScale = localScale;
 
         string hexSuit = ColorUtility.ToHtmlStringRGB(suitColor);
+        string hexHelmet = ColorUtility.ToHtmlStringRGB(helmetColor);
         var matSuit = Mat(hexSuit, 0.4f, 0.05f);
+        var matHelmet = Mat(hexHelmet, 0.80f, 0.25f);
         var matDark = Mat("16181A", 0.3f, 0.1f);
         var matWhite = Mat("F5F7FA", 0.4f, 0.0f);
         var matVisor = Mat("0A1520", 0.95f, 0.85f);
@@ -336,8 +523,8 @@ public static class GPArt {
         Box(root.transform, "Harnais_G", new Vector3(-0.08f, 0.16f, 0.125f), new Vector3(0.045f, 0.28f, 0.015f), matWhite);
         Box(root.transform, "Harnais_D", new Vector3(0.08f, 0.16f, 0.125f), new Vector3(0.045f, 0.28f, 0.015f), matWhite);
 
-        // Casque avec visière
-        var head = Sphere(root.transform, "Casque", new Vector3(0, 0.40f, 0.02f), new Vector3(0.27f, 0.27f, 0.28f), matSuit);
+        // Casque avec visière (couleur contrastée distincte de la voiture)
+        var head = Sphere(root.transform, "Casque", new Vector3(0, 0.40f, 0.02f), new Vector3(0.27f, 0.27f, 0.28f), matHelmet);
         Box(head.transform, "Bandeau", new Vector3(0, 0.06f, 0), new Vector3(0.28f, 0.05f, 0.29f), matWhite);
         Box(head.transform, "Visiere", new Vector3(0, 0.01f, 0.125f), new Vector3(0.20f, 0.08f, 0.08f), matVisor);
 
@@ -479,6 +666,44 @@ public static class GPArt {
         var obs = root.AddComponent<GPObstacle>();
         obs.IsBarrel = false;
         obs.Radius = 0.9f;
+        return root;
+    }
+
+    public static GameObject TrafficCone(Transform parent, Vector3 pos) {
+        var root = new GameObject("ConeSecurite");
+        root.transform.SetParent(parent, false);
+        root.transform.position = pos;
+
+        var orange = Mat("FF5722", 0.7f, 0.1f);
+        var white = Mat("FFFFFF", 0.6f);
+        var black = Mat("212121", 0.4f);
+
+        Box(root.transform, "Base", new Vector3(0, 0.035f, 0), new Vector3(0.72f, 0.07f, 0.72f), black);
+        Cylinder(root.transform, "ConeBas", new Vector3(0, 0.35f, 0), new Vector3(0.50f, 0.35f, 0.50f), orange);
+        Cylinder(root.transform, "BandeBlanche", new Vector3(0, 0.65f, 0), new Vector3(0.36f, 0.16f, 0.36f), white);
+        Cylinder(root.transform, "ConeHaut", new Vector3(0, 0.90f, 0), new Vector3(0.24f, 0.22f, 0.24f), orange);
+
+        var obs = root.AddComponent<GPObstacle>();
+        obs.IsBarrel = false;
+        obs.Radius = 0.85f;
+        return root;
+    }
+
+    public static GameObject CardboardBox(Transform parent, Vector3 pos, Quaternion rot) {
+        var root = new GameObject("CaisseBois");
+        root.transform.SetParent(parent, false);
+        root.transform.position = pos;
+        root.transform.rotation = rot;
+
+        var wood = Mat("A07044", 0.3f, 0.05f);
+        var metal = Mat("78909C", 0.7f, 0.5f);
+
+        Box(root.transform, "Caisse", new Vector3(0, 0.50f, 0), Vector3.one * 0.95f, wood);
+        Box(root.transform, "Cerclage1", new Vector3(0, 0.50f, 0), new Vector3(0.98f, 0.12f, 0.98f), metal);
+
+        var obs = root.AddComponent<GPObstacle>();
+        obs.IsBarrel = false;
+        obs.Radius = 1.0f;
         return root;
     }
 
@@ -632,17 +857,19 @@ public static class GPArt {
         }
 
         // Éléments de sécurité et de décors extérieurs physiques (collision dynamique avec Rigidbody)
-        for (int i = 4; i < path.Count; i += 16) {
+        for (int i = 4; i < path.Count; i += 8) {
             Vector3 fwd = (path[(i + 1) % path.Count] - path[(i + path.Count - 1) % path.Count]).normalized;
             Vector3 rt = Vector3.Cross(Vector3.up, fwd).normalized;
-            int s = (i % 32 == 4) ? 1 : -1;
-            Vector3 propPos = path[i] + rt * s * (width * 0.5f + 2.2f);
+            int s = (i % 16 == 4) ? 1 : -1;
+            Vector3 propPos = path[i] + rt * s * (width * 0.5f + 2.0f);
             Quaternion propRot = Quaternion.LookRotation(fwd);
 
-            int propType = (i / 16) % 4;
+            int propType = (i / 8) % 6;
             if (propType == 0) TireStack(parent, propPos);
             else if (propType == 1) RoadSign(parent, propPos, propRot);
-            else if (propType == 2) WoodenFence(parent, propPos, propRot);
+            else if (propType == 2) TrafficCone(parent, propPos);
+            else if (propType == 3) WoodenFence(parent, propPos, propRot);
+            else if (propType == 4) CardboardBox(parent, propPos, propRot);
             else LampPost(parent, propPos);
         }
     }

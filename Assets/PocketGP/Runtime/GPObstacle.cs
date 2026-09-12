@@ -62,10 +62,25 @@ public sealed class GPObstacle : MonoBehaviour {
     }
 
     void Update() {
-        if (!isHit) return;
-        respawnTimer -= Time.deltaTime;
-        if (respawnTimer <= 0) {
-            ResetObstacle();
+        if (isHit) {
+            respawnTimer -= Time.deltaTime;
+            if (respawnTimer <= 0) {
+                ResetObstacle();
+            }
+            return;
+        }
+
+        var race = GPRace.Instance;
+        if (race && race.Cars != null) {
+            for (int i = 0; i < race.Cars.Count; i++) {
+                var car = race.Cars[i];
+                if (car == null || car.FinishTime >= 0) continue;
+                float d = Vector3.Distance(transform.position, car.transform.position);
+                if (d < Radius) {
+                    OnCarHit(car);
+                    break;
+                }
+            }
         }
     }
 

@@ -18,6 +18,9 @@ public sealed class GPCar : MonoBehaviour {
     GameObject shieldObj;
     Light nitroLight;
     float rescueTimer, boostTime, smoothedSteer, spinTimer, aiItemTimer, smokeTimer;
+    bool isFalling;
+    float fallTimer;
+    Vector3 fallAngularVelocity;
     Vector3 previous;
     Transform frontWheelLeft, frontWheelRight;
     Quaternion baseRotFL = Quaternion.identity, baseRotFR = Quaternion.identity;
@@ -99,6 +102,37 @@ public sealed class GPCar : MonoBehaviour {
 
     public void Step(float dt) {
         if (FinishTime >= 0) {
+            if (Human) {
+                Game.Audio.SetSkid(false, 0);
+                Game.Audio.SetTurbo(false);
+            }
+            return;
+        }
+
+        // Chute physique en hauteur (ex: tombé du pont ou d'une crête en altitude)
+        if (isFalling) {
+            fallTimer += dt;
+            VerticalVelocity -= 26f * dt;
+            Velocity = Vector3.MoveTowards(Velocity, Vector3.zero, dt * 3.5f);
+            transform.position += Velocity * dt + Vector3.up * (VerticalVelocity * dt);
+            body.Rotate(fallAngularVelocity * dt, Space.Self);
+
+            if (transform.position.y <= 0.05f) {
+                transform.position = new Vector3(transform.position.x, 0.05f, transform.position.z);
+                if (VerticalVelocity < -3.5f) {
+                    if (Human) Game.Audio.PlayCrash();
+                    SpawnSparks(transform.position);
+                    VerticalVelocity = -VerticalVelocity * 0.28f;
+                    Velocity *= 0.35f;
+                    fallAngularVelocity *= 0.35f;
+                } else {
+                    VerticalVelocity = 0;
+                    Velocity = Vector3.zero;
+                    if (fallTimer > 0.85f) {
+                        Rescue();
+                    }
+                }
+            }
             if (Human) {
                 Game.Audio.SetSkid(false, 0);
                 Game.Audio.SetTurbo(false);
@@ -238,6 +272,10 @@ public sealed class GPCar : MonoBehaviour {
         Velocity = Vector3.Lerp(Velocity, desired, 1 - Mathf.Exp(-(drift ? (3.2f * grip) : (9.0f * grip)) * dt));
 
         bool sliding = drift && Speed > 6f && Mathf.Abs(steer) > .15f;
+        bool fastTurn = Speed > 9.5f && Mathf.Abs(steer) > 0.35f;
+        bool skidAudioActive = sliding || fastTurn;
+        float skidIntensity = sliding ? Mathf.Clamp01(Mathf.Abs(steer) * (Speed / 12f))
+                                      : Mathf.Clamp01((Speed - 9.5f) / 7.5f * Mathf.Abs(steer));
         if (sliding) DriftCharge += dt;
         if (!drift && DriftCharge > 0) {
             if (DriftCharge > .65f) {
@@ -260,7 +298,7 @@ public sealed class GPCar : MonoBehaviour {
 
         // Gestion audio pour le joueur humain
         if (Human) {
-            Game.Audio.SetSkid(sliding, Mathf.Clamp01(Mathf.Abs(steer) * (Speed / 12f)));
+            Game.Audio.SetSkid(skidAudioActive, skidIntensity);
             Game.Audio.SetTurbo(isBoosting, Speed);
         }
 
@@ -292,7 +330,21 @@ public sealed class GPCar : MonoBehaviour {
 
         // Position Y épousant les montées et descentes du circuit
         float trackY = Game && Game.Track ? Game.Track.GetElevation(transform.position) : 0f;
-        transform.position = new Vector3(transform.position.x, trackY + Altitude, transform.position.z);
+
+        // Détection de chute physique en cas de sortie de piste en hauteur (ex: pont, crêtes)
+        if (roadDistance > Game.Track.Width * 0.55f + 0.3f && transform.position.y > 0.75f) {
+            isFalling = true;
+            fallTimer = 0f;
+            VerticalVelocity = -2.0f;
+            fallAngularVelocity = new Vector3(Random.Range(55f, 110f), Random.Range(-75f, 75f), Random.Range(-55f, 55f));
+            if (Human) {
+                Game.Notify("CHUTE !");
+                Game.Audio.PlayJump();
+            }
+            return;
+        }
+
+        transform.position = new Vector3(transform.position.x, (roadDistance > Game.Track.Width * 0.55f ? Mathf.Min(trackY, 0.05f) : trackY) + Altitude, transform.position.z);
         body.localPosition = Vector3.zero;
 
         // Inclinaison de la carrosserie selon la pente du circuit (pitch)
@@ -354,6 +406,7 @@ public sealed class GPCar : MonoBehaviour {
         CurrentItem = item;
         if (Human) {
             Game.Audio.PlayItemGet();
+            Game.Audio.PlayBonusVoice(item);
             string[] names = { "", "MISSILE (Touche E)", "FLAQUE D'HUILE (Touche E)", "SUPER TURBO (Touche E)", "BOUCLIER (Touche E)" };
             Game.Notify(names[(int)item]);
         }
@@ -420,6 +473,9 @@ public sealed class GPCar : MonoBehaviour {
         VerticalVelocity = 0;
         rescueTimer = 0;
         spinTimer = 0;
+        isFalling = false;
+        fallTimer = 0;
+        if (body) body.localRotation = Quaternion.identity;
         leftTrail.Clear();
         rightTrail.Clear();
         if (nitroLight) nitroLight.enabled = false;

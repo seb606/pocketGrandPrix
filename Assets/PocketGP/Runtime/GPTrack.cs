@@ -152,11 +152,11 @@ public sealed class GPTrack : MonoBehaviour {
                 break;
         }
 
-        // Rubans de route 3D
-        Ribbon(-Width * .5f - .65f, Width * .5f + .65f, -.01f, GPArt.Mat(borderColor));
-        Ribbon(-Width * .5f, Width * .5f, .012f, GPArt.Mat(groundColor));
-        Ribbon(-Width * .5f + .22f, -Width * .5f + .34f, .031f, GPArt.Mat("EDE4CE"));
-        Ribbon(Width * .5f - .34f, Width * .5f - .22f, .031f, GPArt.Mat("EDE4CE"));
+        // Rubans de route 3D haute définition
+        Ribbon(-Width * .5f - .65f, Width * .5f + .65f, -.01f, GPArt.Mat(borderColor, 0.4f));
+        Ribbon(-Width * .5f, Width * .5f, .012f, GPArt.GetRoadMaterial(CurrentSurface));
+        Ribbon(-Width * .5f + .20f, -Width * .5f + .32f, .031f, GPArt.Mat("F0F4F8", 0.8f));
+        Ribbon(Width * .5f - .32f, Width * .5f - .20f, .031f, GPArt.Mat("F0F4F8", 0.8f));
 
         for (int i = 0; i < Points.Count; i += 2) {
             Vector3 forward = Tangent(i);
