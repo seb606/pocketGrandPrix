@@ -138,20 +138,7 @@ public static class GPArt {
     }
 
     public static GameObject Flame(Transform parent, Vector3 localPos) {
-        var root = new GameObject("Flamme Turbo");
-        root.transform.SetParent(parent, false);
-        root.transform.localPosition = localPos;
-        // Plume principale bleue cyan électrique
-        var plume = Cylinder(root.transform, "Plume", new Vector3(0, 0, -.65f), new Vector3(.24f, .75f, .24f), Mat("00E5FF", .95f));
-        plume.transform.localRotation = Quaternion.Euler(90, 0, 0);
-        // Flamme intermédiaire dorée
-        var mid = Cylinder(root.transform, "Mid", new Vector3(0, 0, -.48f), new Vector3(.18f, .55f, .18f), Mat("FFB800", .95f));
-        mid.transform.localRotation = Quaternion.Euler(90, 0, 0);
-        // Cœur plasma blanc chaud
-        var core = Cylinder(root.transform, "Coeur", new Vector3(0, 0, -.32f), new Vector3(.11f, .38f, .11f), Mat("FFFFFF", 1f));
-        core.transform.localRotation = Quaternion.Euler(90, 0, 0);
-        root.SetActive(false);
-        return root;
+        return null;
     }
 
     public static GameObject JumpRamp(Transform parent) {

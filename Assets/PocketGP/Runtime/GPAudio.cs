@@ -331,16 +331,17 @@ public sealed class GPAudio : MonoBehaviour {
         skid.pitch = 0.95f + intensity * 0.45f;
     }
 
-    public void SetTurbo(bool active) {
+    public void SetTurbo(bool active, float speed = 0) {
         if (active && !wasTurbo) {
-            if (turboBlast) fx.PlayOneShot(turboBlast, effectsVolume * 0.90f);
+            if (turboBlast) fx.PlayOneShot(turboBlast, effectsVolume * 0.85f);
             if (!turbo.isPlaying) turbo.Play();
         } else if (!active && wasTurbo) {
-            if (blowOffClip) fx.PlayOneShot(blowOffClip, effectsVolume * 0.85f);
+            if (blowOffClip) fx.PlayOneShot(blowOffClip, effectsVolume * 0.80f);
         }
         wasTurbo = active;
         turbo.volume = active ? effectsVolume * 0.70f : 0;
-        turbo.pitch = active ? 1.0f + Mathf.PingPong(Time.time * 4f, 0.12f) : 1.0f;
+        float targetPitch = 0.95f + Mathf.Clamp01(speed / 25f) * 0.35f;
+        turbo.pitch = Mathf.Lerp(turbo.pitch, targetPitch, Time.deltaTime * 8f);
     }
 
     public void Beep(bool pickup = false) { fx.PlayOneShot(pickup ? coin : beep); }

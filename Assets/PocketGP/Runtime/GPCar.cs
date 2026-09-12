@@ -15,7 +15,7 @@ public sealed class GPCar : MonoBehaviour {
 
     Transform body;
     TrailRenderer leftTrail, rightTrail;
-    GameObject flameL, flameR, shieldObj;
+    GameObject shieldObj;
     Light nitroLight;
     float rescueTimer, boostTime, smoothedSteer, spinTimer, aiItemTimer, smokeTimer;
     Vector3 previous;
@@ -41,10 +41,6 @@ public sealed class GPCar : MonoBehaviour {
 
         leftTrail = Trail(-.4f);
         rightTrail = Trail(.4f);
-
-        // Flammes d'échappement turbo
-        flameL = GPArt.Flame(transform, new Vector3(-.31f, .45f, -.89f));
-        flameR = GPArt.Flame(transform, new Vector3(.31f, .45f, -.89f));
 
         // Halo lumineux de turbo sous le châssis
         var nlObj = new GameObject("HaloTurbo");
@@ -201,26 +197,19 @@ public sealed class GPCar : MonoBehaviour {
         boostTime = Mathf.Max(0, boostTime - dt);
         if (boostTime > 0) max *= 1.25f;
 
-        // Activation visuelle des flammes turbo et halo lumineux
-        bool showFlame = isBoosting && Speed > 4f;
-        if (flameL && flameR) {
-            flameL.SetActive(showFlame);
-            flameR.SetActive(showFlame);
-            if (showFlame) {
-                float sx = 1f + Mathf.PingPong(Time.time * 30f, 0.25f);
-                float sz = 1.35f + Mathf.PingPong(Time.time * 45f, 0.65f);
-                flameL.transform.localScale = new Vector3(sx, sx, sz);
-                flameR.transform.localScale = new Vector3(sx, sx, sz);
-                if (Random.value < 0.4f) {
-                    SpawnTurboSpark(transform.position - transform.forward * 1.0f + transform.right * Random.Range(-0.35f, 0.35f));
-                }
+        // Effet turbo dynamique : halo lumineux sous le châssis et traînée de plasma d'échappement
+        bool isBoostingNow = isBoosting && Speed > 3.5f;
+        if (nitroLight) {
+            nitroLight.enabled = isBoostingNow;
+            if (isBoostingNow) {
+                nitroLight.intensity = 2.4f + Mathf.PingPong(Time.time * 20f, 0.8f);
             }
         }
-        if (nitroLight) {
-            nitroLight.enabled = showFlame;
-            if (showFlame) {
-                nitroLight.intensity = 2.4f + Mathf.PingPong(Time.time * 25f, 0.9f);
-            }
+        if (isBoostingNow) {
+            Vector3 leftExhaust = transform.position - transform.forward * 0.92f - transform.right * 0.30f;
+            Vector3 rightExhaust = transform.position - transform.forward * 0.92f + transform.right * 0.30f;
+            SpawnTurboSpark(leftExhaust);
+            SpawnTurboSpark(rightExhaust);
         }
 
         float targetSpeed = throttle < 0 ? 0 : max * throttle;
@@ -256,7 +245,7 @@ public sealed class GPCar : MonoBehaviour {
         // Gestion audio pour le joueur humain
         if (Human) {
             Game.Audio.SetSkid(sliding, Mathf.Clamp01(Mathf.Abs(steer) * (Speed / 12f)));
-            Game.Audio.SetTurbo(isBoosting);
+            Game.Audio.SetTurbo(isBoosting, Speed);
         }
 
         // Gestion des volutes de fumée de pneu au dérapage
@@ -286,7 +275,8 @@ public sealed class GPCar : MonoBehaviour {
         transform.position += Velocity * dt;
         body.localPosition = new Vector3(0, Altitude, 0);
         float pitch = Mathf.Clamp(-VerticalVelocity * 1.6f, -25f, 25f);
-        body.localRotation = Quaternion.Euler(Mathf.Sin(Time.time * 22) * Speed * .025f + pitch, 0, -smoothedSteer * Speed * .32f);
+        float roll = -smoothedSteer * Mathf.Clamp01(Speed / 10f) * 2.8f;
+        body.localRotation = Quaternion.Euler(pitch, 0, roll);
 
         // --- VALIDATION ROBUSTE DES TOURS ET CHECKPOINTS ---
         int nextGate = (Gate + 1) % Game.Track.Gates.Count;
@@ -403,8 +393,7 @@ public sealed class GPCar : MonoBehaviour {
         spinTimer = 0;
         leftTrail.Clear();
         rightTrail.Clear();
-        if (flameL) flameL.SetActive(false);
-        if (flameR) flameR.SetActive(false);
+        if (nitroLight) nitroLight.enabled = false;
     }
 
     public void Jump(float strength = 13.5f) {
@@ -468,15 +457,15 @@ public sealed class GPCar : MonoBehaviour {
     }
 
     void SpawnTurboSpark(Vector3 pos) {
-        if (puffs.Count > 40) return;
-        var s = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        if (puffs.Count > 50) return;
+        var s = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         s.name = "Plasma";
         Destroy(s.GetComponent<Collider>());
         s.transform.position = pos + Vector3.up * 0.22f;
-        s.transform.localScale = Vector3.one * 0.14f;
-        s.GetComponent<Renderer>().sharedMaterial = GPArt.Mat(Random.value < 0.65f ? "00F6FF" : "FFD700", 1f);
-        Vector3 vel = -transform.forward * Random.Range(6f, 13f) + Random.insideUnitSphere * 1.2f;
-        puffs.Add(new Puff { t = s.transform, life = 0.22f, maxLife = 0.22f, vel = vel });
+        s.transform.localScale = Vector3.one * Random.Range(0.14f, 0.26f);
+        s.GetComponent<Renderer>().sharedMaterial = GPArt.Mat(Random.value < 0.65f ? "00F0FF" : "FFA000", 1f);
+        Vector3 vel = -transform.forward * Random.Range(7f, 15f) + Random.insideUnitSphere * 0.8f;
+        puffs.Add(new Puff { t = s.transform, life = 0.24f, maxLife = 0.24f, vel = vel });
     }
 
     void OnDestroy() {
