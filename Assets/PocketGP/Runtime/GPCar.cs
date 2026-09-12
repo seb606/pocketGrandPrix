@@ -19,6 +19,8 @@ public sealed class GPCar : MonoBehaviour {
     Light nitroLight;
     float rescueTimer, boostTime, smoothedSteer, spinTimer, aiItemTimer, smokeTimer;
     Vector3 previous;
+    Transform frontWheelLeft, frontWheelRight;
+    Quaternion baseRotFL = Quaternion.identity, baseRotFR = Quaternion.identity;
 
     struct Puff {
         public Transform t;
@@ -32,9 +34,11 @@ public sealed class GPCar : MonoBehaviour {
         Game = game;
         Id = id;
         body = GPArt.Car(transform, game.CarModelIndex, id == 0 ? game.ColorIndex : id);
+        FindFrontWheels();
         var track = game.Track;
         Vector3 f = track.Tangent(0), r = Vector3.Cross(Vector3.up, f);
-        transform.position = track.Points[0] - f * (2.5f + (id / 2) * 2.5f) + r * (id % 2 == 0 ? -1.4f : 1.4f);
+        float initY = track.GetElevation(track.Points[0]);
+        transform.position = track.Points[0] - f * (2.5f + (id / 2) * 2.5f) + r * (id % 2 == 0 ? -1.4f : 1.4f) + Vector3.up * initY;
         Heading = Quaternion.LookRotation(f).eulerAngles.y;
         transform.rotation = Quaternion.Euler(0, Heading, 0);
         previous = transform.position;
@@ -59,6 +63,23 @@ public sealed class GPCar : MonoBehaviour {
         shieldObj.SetActive(false);
 
         aiItemTimer = Random.Range(2f, 5f);
+    }
+
+    void FindFrontWheels() {
+        frontWheelLeft = null;
+        frontWheelRight = null;
+        if (!body) return;
+        foreach (var t in body.GetComponentsInChildren<Transform>(true)) {
+            string n = t.name.ToLower();
+            if (frontWheelLeft == null && (n.Contains("flwheel") || n.Contains("fltire") || n.Contains("frontleft") || n.Contains("tire_fl") || n.Contains("flrim"))) {
+                frontWheelLeft = t;
+                baseRotFL = t.localRotation;
+            }
+            if (frontWheelRight == null && (n.Contains("frwheel") || n.Contains("frtire") || n.Contains("frontright") || n.Contains("tire_fr") || n.Contains("frrim"))) {
+                frontWheelRight = t;
+                baseRotFR = t.localRotation;
+            }
+        }
     }
 
     TrailRenderer Trail(float x) {
@@ -212,8 +233,9 @@ public sealed class GPCar : MonoBehaviour {
         Heading += smoothedSteer * (drift ? 124 : 105) * Mathf.Clamp01(Speed / 5) * dt;
         transform.rotation = Quaternion.Euler(0, Heading, 0);
 
+        float grip = GetSurfaceGrip();
         Vector3 desired = transform.forward * Speed;
-        Velocity = Vector3.Lerp(Velocity, desired, 1 - Mathf.Exp(-(drift ? 3.3f : 9) * dt));
+        Velocity = Vector3.Lerp(Velocity, desired, 1 - Mathf.Exp(-(drift ? (3.2f * grip) : (9.0f * grip)) * dt));
 
         bool sliding = drift && Speed > 6f && Mathf.Abs(steer) > .15f;
         if (sliding) DriftCharge += dt;
@@ -267,10 +289,23 @@ public sealed class GPCar : MonoBehaviour {
 
         previous = transform.position;
         transform.position += Velocity * dt;
-        body.localPosition = new Vector3(0, Altitude, 0);
-        float pitch = Mathf.Clamp(-VerticalVelocity * 1.6f, -25f, 25f);
+
+        // Position Y épousant les montées et descentes du circuit
+        float trackY = Game && Game.Track ? Game.Track.GetElevation(transform.position) : 0f;
+        transform.position = new Vector3(transform.position.x, trackY + Altitude, transform.position.z);
+        body.localPosition = Vector3.zero;
+
+        // Inclinaison de la carrosserie selon la pente du circuit (pitch)
+        Vector3 tangent = Game && Game.Track ? Game.Track.Tangent(nearest) : transform.forward;
+        float slopePitch = -tangent.y * 45f;
+        float jumpPitch = Mathf.Clamp(-VerticalVelocity * 1.6f, -25f, 25f);
         float roll = -smoothedSteer * Mathf.Clamp01(Speed / 10f) * 2.8f;
-        body.localRotation = Quaternion.Euler(pitch, 0, roll);
+        body.localRotation = Quaternion.Euler(slopePitch + jumpPitch, 0, roll);
+
+        // Orientation réaliste des roues avant selon le braquage
+        float steerAngle = smoothedSteer * 28f;
+        if (frontWheelLeft) frontWheelLeft.localRotation = baseRotFL * Quaternion.Euler(0, steerAngle, 0);
+        if (frontWheelRight) frontWheelRight.localRotation = baseRotFR * Quaternion.Euler(0, steerAngle, 0);
 
         // --- VALIDATION ROBUSTE DES TOURS ET CHECKPOINTS ---
         int nextGate = (Gate + 1) % Game.Track.Gates.Count;
@@ -425,6 +460,17 @@ public sealed class GPCar : MonoBehaviour {
         }
     }
 
+    public float GetSurfaceGrip() {
+        if (!Game || !Game.Track) return 1.0f;
+        switch (Game.Track.CurrentSurface) {
+            case GPTrack.SurfaceType.Dirt: return 0.82f;
+            case GPTrack.SurfaceType.Sand: return 0.76f;
+            case GPTrack.SurfaceType.Snow: return 0.62f;
+            case GPTrack.SurfaceType.Parquet: return 0.88f;
+            default: return 1.0f;
+        }
+    }
+
     void SpawnSmoke(Vector3 pos) {
         if (puffs.Count > 40) return;
         var s = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -432,7 +478,14 @@ public sealed class GPCar : MonoBehaviour {
         Destroy(s.GetComponent<Collider>());
         s.transform.position = pos + Vector3.up * 0.12f;
         s.transform.localScale = Vector3.one * 0.18f;
-        s.GetComponent<Renderer>().sharedMaterial = GPArt.Mat("E2ECF0", 0.1f);
+
+        string smokeColor = "E2ECF0";
+        if (Game && Game.Track) {
+            if (Game.Track.CurrentSurface == GPTrack.SurfaceType.Dirt) smokeColor = "8D6E63";
+            else if (Game.Track.CurrentSurface == GPTrack.SurfaceType.Sand) smokeColor = "D4AC0D";
+            else if (Game.Track.CurrentSurface == GPTrack.SurfaceType.Snow) smokeColor = "FFFFFF";
+        }
+        s.GetComponent<Renderer>().sharedMaterial = GPArt.Mat(smokeColor, 0.1f);
         Vector3 vel = new Vector3(Random.Range(-0.4f, 0.4f), Random.Range(0.7f, 1.5f), Random.Range(-0.4f, 0.4f)) - Velocity * 0.12f;
         puffs.Add(new Puff { t = s.transform, life = 0.4f, maxLife = 0.4f, vel = vel });
     }

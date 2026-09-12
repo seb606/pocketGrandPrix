@@ -55,6 +55,18 @@ public static class GPLeaderboard {
         data.Entries.Add(new ScoreEntry { Name = "Champion", Country = "🇫🇷 France", Time = 56.40f, Track = 2, Score = 700 });
         data.Entries.Add(new ScoreEntry { Name = "Lightning", Country = "🇩🇪 Allemagne", Time = 59.15f, Track = 2, Score = 500 });
         data.Entries.Add(new ScoreEntry { Name = "Comet", Country = "🇨🇦 Canada", Time = 62.30f, Track = 2, Score = 400 });
+
+        data.Entries.Add(new ScoreEntry { Name = "DuneRider", Country = "🇪🇸 Espagne", Time = 58.70f, Track = 3, Score = 650 });
+        data.Entries.Add(new ScoreEntry { Name = "Mirage", Country = "🌍 Monde", Time = 61.20f, Track = 3, Score = 450 });
+        data.Entries.Add(new ScoreEntry { Name = "Nomad", Country = "🇧🇷 Brésil", Time = 63.80f, Track = 3, Score = 350 });
+
+        data.Entries.Add(new ScoreEntry { Name = "Blizzard", Country = "🇨🇭 Suisse", Time = 64.80f, Track = 4, Score = 700 });
+        data.Entries.Add(new ScoreEntry { Name = "Yeti", Country = "🇨🇦 Canada", Time = 68.10f, Track = 4, Score = 550 });
+        data.Entries.Add(new ScoreEntry { Name = "Avalanche", Country = "🇫🇷 France", Time = 71.40f, Track = 4, Score = 400 });
+
+        data.Entries.Add(new ScoreEntry { Name = "NeonKnight", Country = "🇯🇵 Japon", Time = 55.30f, Track = 5, Score = 800 });
+        data.Entries.Add(new ScoreEntry { Name = "CyberRacer", Country = "🇺🇸 USA", Time = 57.90f, Track = 5, Score = 600 });
+        data.Entries.Add(new ScoreEntry { Name = "Vapor", Country = "🇬🇧 UK", Time = 60.50f, Track = 5, Score = 500 });
         Save();
     }
 

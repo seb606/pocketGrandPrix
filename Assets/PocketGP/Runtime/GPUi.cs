@@ -141,9 +141,9 @@ public sealed class GPUi : MonoBehaviour {
         Txt(c, "CIRCUIT", new Vector2(0, 188), new Vector2(600, 30), 17, mint);
 
         // Flèches bien visibles "<" et ">" au lieu de caractères Unicode manquants
-        Button(c, "<", new Vector2(-273, 140), new Vector2(54, 54), () => { game.TrackIndex = (game.TrackIndex + 2) % 3; game.BuildWorld(game.TrackIndex); ShowMenu(); });
+        Button(c, "<", new Vector2(-273, 140), new Vector2(54, 54), () => { game.TrackIndex = (game.TrackIndex + 5) % 6; game.BuildWorld(game.TrackIndex); ShowMenu(); });
         Txt(c, GPTrack.Names[game.TrackIndex], new Vector2(0, 144), new Vector2(480, 55), 25, ink);
-        Button(c, ">", new Vector2(273, 140), new Vector2(54, 54), () => { game.TrackIndex = (game.TrackIndex + 1) % 3; game.BuildWorld(game.TrackIndex); ShowMenu(); });
+        Button(c, ">", new Vector2(273, 140), new Vector2(54, 54), () => { game.TrackIndex = (game.TrackIndex + 1) % 6; game.BuildWorld(game.TrackIndex); ShowMenu(); });
 
         float best = PlayerPrefs.GetFloat("best_" + game.TrackIndex + "_" + game.Difficulty, 0);
         Txt(c, best > 0 ? "Record perso : " + TimeText(best) : "3 tours  ·  5 pilotes  ·  armes bonus", new Vector2(0, 96), new Vector2(620, 30), 18, muted);
@@ -172,7 +172,7 @@ public sealed class GPUi : MonoBehaviour {
         });
 
         Button(c, "COURSE RAPIDE", new Vector2(0, -78), new Vector2(604, 56), () => game.StartRace(), true);
-        Button(c, "CHAMPIONNAT · 3 CIRCUITS", new Vector2(0, -140), new Vector2(604, 52), () => game.StartRace(true));
+        Button(c, "CHAMPIONNAT · 6 CIRCUITS", new Vector2(0, -140), new Vector2(604, 52), () => game.StartRace(true));
         Button(c, "🏆  CLASSEMENT · TOP 10", new Vector2(0, -198), new Vector2(604, 48), () => ShowLeaderboard(game.TrackIndex));
 
         Button(c, game.MobileMode ? "AFFICHAGE : 📱 TÉLÉPHONE (PAYSAGE)" : "AFFICHAGE : 🖥️ ORDINATEUR", new Vector2(0, -252), new Vector2(604, 46), () => {
@@ -192,15 +192,19 @@ public sealed class GPUi : MonoBehaviour {
     public void ShowLeaderboard(int trackFilter = 0) {
         var c = Card("TABLEAU DES RECORDS", "CLASSEMENT · TOP 10");
 
-        // Onglets pour chaque circuit
-        Button(c, "Petit-déj.", new Vector2(-204, 230), new Vector2(195, 44), () => ShowLeaderboard(0), trackFilter == 0);
-        Button(c, "Bureau", new Vector2(0, 230), new Vector2(195, 44), () => ShowLeaderboard(1), trackFilter == 1);
-        Button(c, "Jardin", new Vector2(204, 230), new Vector2(195, 44), () => ShowLeaderboard(2), trackFilter == 2);
+        // Onglets pour chaque circuit (2 rangées de 3)
+        string[] tabNames = { "1. Petit-déj.", "2. Bureau", "3. Jardin", "4. Sahara", "5. Alpin", "6. Métropole" };
+        for (int t = 0; t < 6; t++) {
+            int trackId = t;
+            float x = (t % 3 - 1) * 204f;
+            float y = t < 3 ? 245f : 202f;
+            Button(c, tabNames[t], new Vector2(x, y), new Vector2(195, 38), () => ShowLeaderboard(trackId), trackFilter == trackId);
+        }
 
         var top = GPLeaderboard.GetTop(trackFilter);
-        float yStart = 165f;
+        float yStart = 150f;
         for (int i = 0; i < 10; i++) {
-            float y = yStart - i * 40f;
+            float y = yStart - i * 42f;
             var rowBg = Block(c, new Vector2(.5f, .5f), new Vector2(0, y), new Vector2(610, 34), i % 2 == 0 ? new Color(.1f, .22f, .3f, .6f) : new Color(.07f, .16f, .22f, .4f));
             string rankStr = i == 0 ? "🥇 1" : i == 1 ? "🥈 2" : i == 2 ? "🥉 3" : string.Format("#{0}", i + 1);
 
@@ -355,7 +359,7 @@ public sealed class GPUi : MonoBehaviour {
             ShowLeaderboard(game.TrackIndex);
         }, true);
 
-        if (game.Championship) Button(c, game.TrackIndex < 2 ? "CIRCUIT SUIVANT" : "RÉSULTAT DU CHAMPIONNAT", new Vector2(0, -115), new Vector2(604, 52), () => game.Next());
+        if (game.Championship) Button(c, game.TrackIndex < 5 ? "CIRCUIT SUIVANT" : "RÉSULTAT DU CHAMPIONNAT", new Vector2(0, -115), new Vector2(604, 52), () => game.Next());
         else Button(c, "REJOUER", new Vector2(0, -115), new Vector2(604, 52), () => game.Retry());
 
         Button(c, "🏆  VOIR LE CLASSEMENT", new Vector2(0, -180), new Vector2(604, 48), () => ShowLeaderboard(game.TrackIndex));
@@ -363,9 +367,9 @@ public sealed class GPUi : MonoBehaviour {
     }
 
     public void ShowChampionship() {
-        var c = Card("LES TROIS CIRCUITS SONT TERMINÉS", "FIN DU CHAMPIONNAT");
-        Txt(c, game.ChampionshipPoints + " / 30", new Vector2(0, 115), new Vector2(620, 110), 70, mint);
-        Txt(c, game.ChampionshipPoints >= 25 ? "Trophée OR" : game.ChampionshipPoints >= 18 ? "Trophée ARGENT" : "Trophée BRONZE", new Vector2(0, 8), new Vector2(600, 60), 34, ink);
+        var c = Card("LES 6 CIRCUITS SONT TERMINÉS", "FIN DU CHAMPIONNAT");
+        Txt(c, game.ChampionshipPoints + " / 60", new Vector2(0, 115), new Vector2(620, 110), 70, mint);
+        Txt(c, game.ChampionshipPoints >= 50 ? "Trophée OR" : game.ChampionshipPoints >= 36 ? "Trophée ARGENT" : "Trophée BRONZE", new Vector2(0, 8), new Vector2(600, 60), 34, ink);
         Button(c, "MENU PRINCIPAL", new Vector2(0, -180), new Vector2(604, 66), () => game.Menu(), true);
     }
 

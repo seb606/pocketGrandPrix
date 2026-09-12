@@ -4,10 +4,10 @@ import os
 
 sample_rate = 44100
 
-def write_wav(filename, data):
+def write_wav(filename, data, peak_level=0.55):
     max_val = np.max(np.abs(data))
     if max_val > 0:
-        data = data / max_val * 0.85
+        data = data / max_val * peak_level
     int_data = (data * 32767).astype(np.int16)
     
     with wave.open(filename, 'wb') as wav:
@@ -35,62 +35,58 @@ def bandpass(x, low_hz, high_hz):
     return hp
 
 # 1. Turbo Jet Thruster Loop (2.0s seamless loop)
-# Authentique souffle puissant de réacteur / protoxyde d'azote (Nitrous jet rush)
+# Son discret, feutré, sans aigu strident : souffle chaud & grondement aérodynamique
 duration = 2.0
 num_samples = int(sample_rate * duration)
 t = np.linspace(0, duration, num_samples, endpoint=False)
 
-np.random.seed(1337)
+np.random.seed(42)
 white = np.random.uniform(-1, 1, num_samples)
 
-# Souffle d'air sous haute pression (large bande lisse, pas de sifflet strident)
-air_body = bandpass(white, 400.0, 3800.0) * 1.5
-air_high = bandpass(white, 2400.0, 7500.0) * 0.75
-air_roar = lowpass(white, 320.0) * 1.8
+# Souffle chaud filtré (250 Hz - 950 Hz), doux et feutré
+air_warm = bandpass(white, 220.0, 950.0) * 1.6
+air_sub = lowpass(white, 280.0) * 1.4
 
-# Sifflement doux et fluide de compresseur aérodynamique (1750 Hz)
-spool_whistle = np.sin(2 * np.pi * 1720.0 * t) * 0.15 + np.sin(2 * np.pi * 3440.0 * t) * 0.05
-# Ondulation douce du flux d'air
-airflow = 0.88 + 0.12 * np.sin(2 * np.pi * 16.0 * t)
+# Turbine grave et discrète (440 Hz au lieu de 1720 Hz)
+spool_whistle = np.sin(2 * np.pi * 440.0 * t) * 0.08 + np.sin(2 * np.pi * 660.0 * t) * 0.03
+airflow = 0.92 + 0.08 * np.sin(2 * np.pi * 8.0 * t)
 
-# Poussée grave moteur
-sub_thrust = np.sin(2 * np.pi * 58.0 * t) * 0.35 + np.sin(2 * np.pi * 116.0 * t) * 0.20
+# Poussée sourde basse fréquence (65 Hz)
+sub_thrust = np.sin(2 * np.pi * 65.0 * t) * 0.25
 
-turbo_loop = (air_body * 0.45 + air_high * 0.30 + air_roar * 0.35 + spool_whistle * airflow + sub_thrust * 0.25)
+turbo_loop = (air_warm * 0.55 + air_sub * 0.35 + spool_whistle * airflow + sub_thrust * 0.20)
 
-fade_len = int(sample_rate * 0.06)
+fade_len = int(sample_rate * 0.08)
 ramp = np.linspace(0, 1, fade_len)
 turbo_loop[:fade_len] = turbo_loop[:fade_len] * ramp + turbo_loop[-fade_len:] * (1 - ramp)
 turbo_loop = turbo_loop[:num_samples - fade_len]
-write_wav(os.path.join(out_dir, "turbo_loop.wav"), turbo_loop)
+write_wav(os.path.join(out_dir, "turbo_loop.wav"), turbo_loop, peak_level=0.50)
 
-# 2. Turbo Ignite (0.32s coup de bélier et décharge d'allumage nitro)
-ignite_dur = 0.32
+# 2. Turbo Ignite (déclenchement doux et feutré)
+ignite_dur = 0.28
 n_ig = int(sample_rate * ignite_dur)
 t_ig = np.linspace(0, ignite_dur, n_ig, endpoint=False)
-env_punch = np.exp(-t_ig * 14.0)
+env_punch = np.exp(-t_ig * 16.0)
 
-# Percussion sourde d'injection (85 Hz -> 42 Hz)
-f_punch = 85.0 * np.exp(-t_ig * 20.0) + 42.0
-punch_sub = np.sin(np.cumsum(2 * np.pi * f_punch / sample_rate)) * env_punch * 0.9
+# Coup sourd bas médium (110 Hz -> 55 Hz)
+f_punch = 110.0 * np.exp(-t_ig * 18.0) + 55.0
+punch_sub = np.sin(np.cumsum(2 * np.pi * f_punch / sample_rate)) * env_punch * 0.65
 
-# Jet d'air instantané
 white_ig = np.random.uniform(-1, 1, n_ig)
-air_ig = bandpass(white_ig, 800.0, 5200.0) * np.exp(-t_ig * 11.0) * 0.8
-turbo_ignite = punch_sub * 0.55 + air_ig * 0.65
-write_wav(os.path.join(out_dir, "turbo_ignite.wav"), turbo_ignite)
+air_ig = bandpass(white_ig, 350.0, 1400.0) * np.exp(-t_ig * 14.0) * 0.5
+turbo_ignite = punch_sub * 0.50 + air_ig * 0.50
+write_wav(os.path.join(out_dir, "turbo_ignite.wav"), turbo_ignite, peak_level=0.45)
 
-# 3. Blow-off Valve (0.38s détente pneumatique de soupape "pshh-tu-tu")
-bo_dur = 0.38
+# 3. Blow-off Valve (décharge douce et feutrée "pshh")
+bo_dur = 0.30
 n_bo = int(sample_rate * bo_dur)
 t_bo = np.linspace(0, bo_dur, n_bo, endpoint=False)
 white_bo = np.random.uniform(-1, 1, n_bo)
 
-# Échappement d'air comprimé
-air_bo = bandpass(white_bo, 2200.0, 7000.0)
-flutter_bo = 0.4 + 0.6 * np.sin(2 * np.pi * 22.0 * t_bo) * np.exp(-t_bo * 8.0)
-env_bo = np.exp(-t_bo * 8.5)
-turbo_blowoff = air_bo * (1.0 + 0.8 * flutter_bo) * env_bo
-write_wav(os.path.join(out_dir, "turbo_blowoff.wav"), turbo_blowoff)
+# Échappement feutré filtré à 1600 Hz max
+air_bo = bandpass(white_bo, 450.0, 1600.0)
+env_bo = np.exp(-t_bo * 10.0)
+turbo_blowoff = air_bo * env_bo * 0.8
+write_wav(os.path.join(out_dir, "turbo_blowoff.wav"), turbo_blowoff, peak_level=0.40)
 
-print("Realistic racing turbo SFX generated successfully!")
+print("Subtle, warm, low-pitched turbo SFX generated successfully!")

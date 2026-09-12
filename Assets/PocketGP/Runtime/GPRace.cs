@@ -154,16 +154,8 @@ public sealed class GPRace : MonoBehaviour {
             pickups.Add(new Pickup { Visual = root, Position = p, Turbo = turbo, ItemBox = isBox });
         }
 
-        // Éléments interactifs du circuit : Tremplins et Obstacles (cônes & barils)
+        // Éléments interactifs du circuit : Obstacles physiques (cônes & barils)
         int totalPts = Track.Points.Count;
-        int[] rampIndices = { (int)(totalPts * 0.32f), (int)(totalPts * 0.74f) };
-        foreach (int rIdx in rampIndices) {
-            Vector3 pos = Track.Points[rIdx];
-            var ramp = GPArt.JumpRamp(world);
-            ramp.transform.position = pos;
-            ramp.transform.rotation = Quaternion.LookRotation(Track.Tangent(rIdx));
-            hazards.Add(new Hazard { Visual = ramp.transform, Position = pos, IsRamp = true, Radius = 2.6f });
-        }
 
         int[] obsIndices = { (int)(totalPts * 0.16f), (int)(totalPts * 0.44f), (int)(totalPts * 0.58f), (int)(totalPts * 0.88f) };
         for (int k = 0; k < obsIndices.Length; k++) {
@@ -210,7 +202,7 @@ public sealed class GPRace : MonoBehaviour {
 
     public void Next() {
         ChampionshipPoints += new[] { 10, 7, 5, 3, 1 }[Mathf.Clamp(ResultPlace - 1, 0, 4)];
-        if (TrackIndex < 2) {
+        if (TrackIndex < 5) {
             TrackIndex++;
             Launch();
         } else {

@@ -25,15 +25,20 @@ public sealed class GPObstacle : MonoBehaviour {
 
         col = gameObject.GetComponent<Collider>();
         if (!col) {
-            if (IsBarrel) {
-                var cap = gameObject.AddComponent<CapsuleCollider>();
-                cap.radius = 0.44f;
-                cap.height = 1.25f;
-                cap.center = new Vector3(0, 0.62f, 0);
-            } else {
-                var box = gameObject.AddComponent<BoxCollider>();
-                box.size = new Vector3(0.78f, 0.88f, 0.78f);
-                box.center = new Vector3(0, 0.44f, 0);
+            col = gameObject.GetComponentInChildren<Collider>();
+            if (!col) {
+                if (IsBarrel) {
+                    var cap = gameObject.AddComponent<CapsuleCollider>();
+                    cap.radius = 0.44f;
+                    cap.height = 1.25f;
+                    cap.center = new Vector3(0, 0.62f, 0);
+                    col = cap;
+                } else {
+                    var box = gameObject.AddComponent<BoxCollider>();
+                    box.size = new Vector3(0.78f, 0.88f, 0.78f);
+                    box.center = new Vector3(0, 0.44f, 0);
+                    col = box;
+                }
             }
         }
     }

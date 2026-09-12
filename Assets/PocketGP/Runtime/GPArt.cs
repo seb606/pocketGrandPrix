@@ -56,6 +56,21 @@ public static class GPArt {
             instance.name = "Carrosserie_3D";
             instance.transform.localPosition = Vector3.zero;
             instance.transform.localRotation = Quaternion.identity;
+
+            Color[] driverColors = {
+                new Color(0.92f, 0.15f, 0.15f),
+                new Color(0.05f, 0.85f, 0.82f),
+                new Color(0.98f, 0.82f, 0.12f),
+                new Color(0.20f, 0.40f, 0.98f),
+                new Color(0.96f, 0.40f, 0.70f)
+            };
+            Color col = driverColors[color % 5];
+            Vector3 driverPos = (model == 1) ? new Vector3(0, 0.28f, 0.08f) :
+                                (model == 2) ? new Vector3(-0.25f, 0.30f, -0.06f) :
+                                               new Vector3(-0.22f, 0.28f, -0.06f);
+            float driverScale = (model == 1) ? 1.05f : 0.92f;
+            Driver(instance.transform, driverPos, Vector3.one * driverScale, col);
+
             return instance.transform;
         }
 
@@ -303,6 +318,170 @@ public static class GPArt {
         return root;
     }
 
+    public static GameObject Driver(Transform parent, Vector3 localPos, Vector3 localScale, Color suitColor) {
+        var root = new GameObject("Pilote");
+        root.transform.SetParent(parent, false);
+        root.transform.localPosition = localPos;
+        root.transform.localScale = localScale;
+
+        string hexSuit = ColorUtility.ToHtmlStringRGB(suitColor);
+        var matSuit = Mat(hexSuit, 0.4f, 0.05f);
+        var matDark = Mat("16181A", 0.3f, 0.1f);
+        var matWhite = Mat("F5F7FA", 0.4f, 0.0f);
+        var matVisor = Mat("0A1520", 0.95f, 0.85f);
+        var matGloves = Mat("202226", 0.25f, 0.0f);
+
+        // Torse pilote
+        Box(root.transform, "Torse", new Vector3(0, 0.15f, 0), new Vector3(0.32f, 0.30f, 0.24f), matSuit);
+        Box(root.transform, "Harnais_G", new Vector3(-0.08f, 0.16f, 0.125f), new Vector3(0.045f, 0.28f, 0.015f), matWhite);
+        Box(root.transform, "Harnais_D", new Vector3(0.08f, 0.16f, 0.125f), new Vector3(0.045f, 0.28f, 0.015f), matWhite);
+
+        // Casque avec visière
+        var head = Sphere(root.transform, "Casque", new Vector3(0, 0.40f, 0.02f), new Vector3(0.27f, 0.27f, 0.28f), matSuit);
+        Box(head.transform, "Bandeau", new Vector3(0, 0.06f, 0), new Vector3(0.28f, 0.05f, 0.29f), matWhite);
+        Box(head.transform, "Visiere", new Vector3(0, 0.01f, 0.125f), new Vector3(0.20f, 0.08f, 0.08f), matVisor);
+
+        // Bras et volant
+        Cylinder(root.transform, "Bras_G", new Vector3(-0.16f, 0.14f, 0.12f), new Vector3(0.07f, 0.14f, 0.07f), matSuit).transform.localRotation = Quaternion.Euler(55, 15, 0);
+        Cylinder(root.transform, "Bras_D", new Vector3(0.16f, 0.14f, 0.12f), new Vector3(0.07f, 0.14f, 0.07f), matSuit).transform.localRotation = Quaternion.Euler(55, -15, 0);
+        Sphere(root.transform, "Gant_G", new Vector3(-0.10f, 0.19f, 0.23f), new Vector3(0.075f, 0.075f, 0.075f), matGloves);
+        Sphere(root.transform, "Gant_D", new Vector3(0.10f, 0.19f, 0.23f), new Vector3(0.075f, 0.075f, 0.075f), matGloves);
+
+        var wheel = Cylinder(root.transform, "Volant", new Vector3(0, 0.20f, 0.24f), new Vector3(0.16f, 0.015f, 0.16f), matDark);
+        wheel.transform.localRotation = Quaternion.Euler(70, 0, 0);
+
+        return root;
+    }
+
+    public static GameObject Bridge(Transform parent, Vector3 center, Vector3 tangent, float width, float length, float height) {
+        var root = new GameObject("GrandPont");
+        root.transform.SetParent(parent, false);
+        root.transform.position = center;
+        root.transform.rotation = Quaternion.LookRotation(tangent);
+
+        var steelRed = Mat("D63031", 0.65f, 0.4f);
+        var darkPillar = Mat("2D3436", 0.4f, 0.2f);
+        var cableMat = Mat("DFE6E9", 0.8f, 0.7f);
+        var lightYellow = Mat("FEEA88", 0.9f, 0.0f);
+
+        // Tablier sous la route
+        Box(root.transform, "Tablier", new Vector3(0, -0.35f, 0), new Vector3(width + 1.2f, 0.65f, length), darkPillar);
+
+        // Piliers géants sous le pont s'ancrant dans le sol
+        for (int z = -1; z <= 1; z += 2) {
+            float zPos = z * (length * 0.35f);
+            Cylinder(root.transform, "Pilier_G", new Vector3(-(width * 0.5f + 0.4f), -height * 0.5f, zPos), new Vector3(0.8f, height * 0.5f, 0.8f), darkPillar);
+            Cylinder(root.transform, "Pilier_D", new Vector3( (width * 0.5f + 0.4f), -height * 0.5f, zPos), new Vector3(0.8f, height * 0.5f, 0.8f), darkPillar);
+        }
+
+        // Arches et câbles de chaque côté
+        for (int s = -1; s <= 1; s += 2) {
+            float xPos = s * (width * 0.5f + 0.55f);
+            Box(root.transform, "Pylone_Av", new Vector3(xPos, 2.5f, -length * 0.38f), new Vector3(0.45f, 5.5f, 0.45f), steelRed);
+            Box(root.transform, "Pylone_Ar", new Vector3(xPos, 2.5f,  length * 0.38f), new Vector3(0.45f, 5.5f, 0.45f), steelRed);
+            Box(root.transform, "Cale_Haut", new Vector3(xPos, 5.2f, 0), new Vector3(0.35f, 0.35f, length * 0.80f), steelRed);
+
+            for (int k = -3; k <= 3; k++) {
+                float zCable = k * (length * 0.11f);
+                Cylinder(root.transform, "Cable_" + k, new Vector3(xPos, 2.6f, zCable), new Vector3(0.045f, 2.6f, 0.045f), cableMat);
+            }
+
+            Box(root.transform, "GardeCorps", new Vector3(xPos * 0.94f, 0.55f, 0), new Vector3(0.12f, 0.80f, length), steelRed);
+            for (int l = -2; l <= 2; l++) {
+                Sphere(root.transform, "Lanterne", new Vector3(xPos * 0.94f, 1.05f, l * (length * 0.22f)), Vector3.one * 0.22f, lightYellow);
+            }
+        }
+
+        return root;
+    }
+
+    public static GameObject TireStack(Transform parent, Vector3 pos) {
+        var root = new GameObject("PilePneus");
+        root.transform.SetParent(parent, false);
+        root.transform.position = pos;
+
+        var tireMat = Mat("18191B", 0.25f, 0.05f);
+        var whiteMat = Mat("EDEFEF", 0.4f, 0.0f);
+        var redMat = Mat("D63031", 0.6f, 0.1f);
+
+        for (int i = 0; i < 3; i++) {
+            float y = 0.14f + i * 0.26f;
+            var t = Cylinder(root.transform, "Pneu_" + i, new Vector3(0, y, 0), new Vector3(0.72f, 0.13f, 0.72f), i % 2 == 0 ? whiteMat : redMat);
+            Cylinder(t.transform, "Centre_" + i, Vector3.zero, new Vector3(0.42f, 0.14f, 0.42f), tireMat);
+        }
+
+        var obs = root.AddComponent<GPObstacle>();
+        obs.IsBarrel = true;
+        obs.Radius = 0.95f;
+        return root;
+    }
+
+    public static GameObject RoadSign(Transform parent, Vector3 pos, Quaternion rot) {
+        var root = new GameObject("PanneauVirage");
+        root.transform.SetParent(parent, false);
+        root.transform.position = pos;
+        root.transform.rotation = rot;
+
+        var metalMat = Mat("7F8C8D", 0.7f, 0.6f);
+        var signMat = Mat("F1C40F", 0.75f, 0.1f);
+        var chevronMat = Mat("2C3E50", 0.8f, 0.1f);
+
+        // Poteau métallique fin
+        Cylinder(root.transform, "Poteau", new Vector3(0, 1.0f, 0), new Vector3(0.08f, 1.0f, 0.08f), metalMat);
+        // Panneau indicateur de virage
+        var board = Box(root.transform, "Panneau", new Vector3(0, 1.8f, 0), new Vector3(1.2f, 0.6f, 0.06f), signMat);
+        // Chevrons
+        Box(board.transform, "Chevron1", new Vector3(-0.35f, 0, 0.04f), new Vector3(0.25f, 0.45f, 0.02f), chevronMat);
+        Box(board.transform, "Chevron2", new Vector3(0.05f, 0, 0.04f), new Vector3(0.25f, 0.45f, 0.02f), chevronMat);
+
+        var obs = root.AddComponent<GPObstacle>();
+        obs.IsBarrel = false;
+        obs.Radius = 0.85f;
+        return root;
+    }
+
+    public static GameObject WoodenFence(Transform parent, Vector3 pos, Quaternion rot) {
+        var root = new GameObject("BarriereBois");
+        root.transform.SetParent(parent, false);
+        root.transform.position = pos;
+        root.transform.rotation = rot;
+
+        var woodMat = Mat("8D6E63", 0.25f, 0.0f);
+        // Poteaux
+        Box(root.transform, "PoteauG", new Vector3(-1.1f, 0.5f, 0), new Vector3(0.14f, 1.0f, 0.14f), woodMat);
+        Box(root.transform, "PoteauD", new Vector3( 1.1f, 0.5f, 0), new Vector3(0.14f, 1.0f, 0.14f), woodMat);
+        // Lattes horizontales
+        Box(root.transform, "LatteHaut", new Vector3(0, 0.8f, 0), new Vector3(2.4f, 0.14f, 0.06f), woodMat);
+        Box(root.transform, "LatteBas", new Vector3(0, 0.35f, 0), new Vector3(2.4f, 0.14f, 0.06f), woodMat);
+
+        var obs = root.AddComponent<GPObstacle>();
+        obs.IsBarrel = false;
+        obs.Radius = 1.2f;
+        return root;
+    }
+
+    public static GameObject LampPost(Transform parent, Vector3 pos) {
+        var root = new GameObject("Lampadaire");
+        root.transform.SetParent(parent, false);
+        root.transform.position = pos;
+
+        var metalMat = Mat("34495E", 0.6f, 0.5f);
+        var glassMat = Mat("FFF9C4", 0.95f, 0.0f);
+
+        // Mât fin
+        Cylinder(root.transform, "Mat", new Vector3(0, 2.2f, 0), new Vector3(0.10f, 2.2f, 0.10f), metalMat);
+        // Potence courbée
+        Box(root.transform, "Potence", new Vector3(0.35f, 4.35f, 0), new Vector3(0.85f, 0.08f, 0.08f), metalMat);
+        // Tête de lanterne
+        Cylinder(root.transform, "AbatJour", new Vector3(0.70f, 4.25f, 0), new Vector3(0.40f, 0.10f, 0.40f), metalMat);
+        Sphere(root.transform, "Ampoule", new Vector3(0.70f, 4.12f, 0), Vector3.one * 0.22f, glassMat);
+
+        var obs = root.AddComponent<GPObstacle>();
+        obs.IsBarrel = false;
+        obs.Radius = 0.9f;
+        return root;
+    }
+
     public static void Decor(Transform parent, int theme, List<Vector3> path, float width) {
         var random = new System.Random(127 + theme);
         var wood = Mat(theme == 0 ? "DDB17A" : theme == 1 ? "647785" : "7CAE72");
@@ -410,22 +589,61 @@ public static class GPArt {
                     Box(root, "Gomme", new Vector3(0, .7f, 0), new Vector3(3, 1.4f, 2), col);
                     Box(root, "Bande papier", new Vector3(0, .72f, 0), new Vector3(1.3f, 1.45f, 2.03f), Mat("F5EEE0"));
                 }
-            } else {
+            } else if (theme == 3) {
+                // Dunes du Sahara : Palmiers, amphores et rochers
                 if (i % 3 == 0) {
-                    Cylinder(root, "Pot", new Vector3(0, 1.2f, 0), new Vector3(3.5f, 1.2f, 3.5f), Mat("C97755"));
-                    Cylinder(root, "Tronc", new Vector3(0, 3, 0), new Vector3(.55f, 2, .55f), Mat("886347"));
-                    Sphere(root, "Feuillage", new Vector3(0, 5, 0), new Vector3(5, 5, 5), Mat(i % 2 == 0 ? "4D9166" : "65AC70"));
+                    Cylinder(root, "TroncPalmier", new Vector3(0, 2.5f, 0), new Vector3(.5f, 2.5f, .5f), Mat("8D6E63"));
+                    Sphere(root, "FeuillesPalmier", new Vector3(0, 5.0f, 0), new Vector3(4.2f, 1.2f, 4.2f), Mat("4CAF50"));
                 } else if (i % 3 == 1) {
-                    Sphere(root, "Galet", new Vector3(0, .65f, 0), new Vector3(3.8f, 1.8f, 3), Mat("A4ADB1", .4f));
+                    Cylinder(root, "Amphore", new Vector3(0, 1.0f, 0), new Vector3(1.6f, 1.0f, 1.6f), Mat("D35400", .4f));
                 } else {
-                    Cylinder(root, "Tige", new Vector3(0, 1, 0), new Vector3(.2f, 1, .2f), Mat("4A8055"));
-                    for (int k = 0; k < 5; k++) {
-                        float a = k * Mathf.PI * 2 / 5;
-                        Sphere(root, "Petale", new Vector3(Mathf.Cos(a) * .7f, 2, Mathf.Sin(a) * .7f), new Vector3(1.2f, .4f, 1.2f), col);
+                    Sphere(root, "RocherDesert", new Vector3(0, 1.2f, 0), new Vector3(4.5f, 2.4f, 3.8f), Mat("E59866", .3f));
+                }
+            } else if (theme == 4) {
+                // Col Alpin Enneigé : Sapins, chalets et bonhommes de neige
+                if (i % 3 == 0) {
+                    Cylinder(root, "TroncSapin", new Vector3(0, 1.5f, 0), new Vector3(.5f, 1.5f, .5f), Mat("5D4037"));
+                    Cylinder(root, "BrancheBas", new Vector3(0, 3.0f, 0), new Vector3(3.4f, 1.0f, 3.4f), Mat("2E7D32"));
+                    Cylinder(root, "BrancheHaut", new Vector3(0, 4.4f, 0), new Vector3(2.4f, 0.9f, 2.4f), Mat("2E7D32"));
+                    Cylinder(root, "NeigeSommet", new Vector3(0, 5.2f, 0), new Vector3(1.2f, 0.6f, 1.2f), Mat("FFFFFF", .8f));
+                } else if (i % 3 == 1) {
+                    Box(root, "ChaletCorps", new Vector3(0, 1.5f, 0), new Vector3(4.2f, 3.0f, 3.5f), Mat("6D4C41"));
+                    var roof = Box(root, "ChaletToit", new Vector3(0, 3.4f, 0), new Vector3(4.8f, 0.6f, 4.0f), Mat("FFFFFF", .8f));
+                    roof.transform.localRotation = Quaternion.Euler(15, 0, 0);
+                } else {
+                    Sphere(root, "BonhommeBas", new Vector3(0, 0.8f, 0), Vector3.one * 1.6f, Mat("FFFFFF", .7f));
+                    Sphere(root, "BonhommeHaut", new Vector3(0, 2.0f, 0), Vector3.one * 1.1f, Mat("FFFFFF", .7f));
+                    Box(root, "Chapeau", new Vector3(0, 2.7f, 0), new Vector3(0.7f, 0.6f, 0.7f), Mat("212121"));
+                }
+            } else {
+                // Métropole & Grand Pont : Gratte-ciels miniatures, néons et pylônes
+                if (i % 3 == 0) {
+                    Box(root, "Tour1", new Vector3(0, 6.0f, 0), new Vector3(4.2f, 12.0f, 4.2f), Mat("2C3E50", .8f, .3f));
+                    for (int w = 0; w < 4; w++) {
+                        Box(root, "Fenetre_" + w, new Vector3(0, 3.0f + w * 2.4f, 2.15f), new Vector3(2.8f, 0.8f, 0.05f), Mat("F1C40F", .95f));
                     }
-                    Sphere(root, "Coeur", new Vector3(0, 2.2f, 0), Vector3.one * .65f, Mat("FFE380"));
+                } else if (i % 3 == 1) {
+                    Box(root, "Tour2", new Vector3(0, 4.5f, 0), new Vector3(3.6f, 9.0f, 3.6f), Mat("34495E", .7f, .4f));
+                } else {
+                    Cylinder(root, "PyloneUrbain", new Vector3(0, 3.0f, 0), new Vector3(0.25f, 3.0f, 0.25f), Mat("7F8C8D", .8f));
+                    Sphere(root, "GlobeLumineux", new Vector3(0, 6.1f, 0), Vector3.one * 0.75f, Mat("00F0FF", 1.0f));
                 }
             }
+        }
+
+        // Éléments de sécurité et de décors extérieurs physiques (collision dynamique avec Rigidbody)
+        for (int i = 4; i < path.Count; i += 16) {
+            Vector3 fwd = (path[(i + 1) % path.Count] - path[(i + path.Count - 1) % path.Count]).normalized;
+            Vector3 rt = Vector3.Cross(Vector3.up, fwd).normalized;
+            int s = (i % 32 == 4) ? 1 : -1;
+            Vector3 propPos = path[i] + rt * s * (width * 0.5f + 2.2f);
+            Quaternion propRot = Quaternion.LookRotation(fwd);
+
+            int propType = (i / 16) % 4;
+            if (propType == 0) TireStack(parent, propPos);
+            else if (propType == 1) RoadSign(parent, propPos, propRot);
+            else if (propType == 2) WoodenFence(parent, propPos, propRot);
+            else LampPost(parent, propPos);
         }
     }
 }
