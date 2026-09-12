@@ -39,8 +39,18 @@ public static class GPArt {
     public static GameObject Sphere(Transform parent, string name, Vector3 p, Vector3 s, Material m) { return Shape(parent, name, PrimitiveType.Sphere, p, s, m); }
     public static GameObject Cylinder(Transform parent, string name, Vector3 p, Vector3 s, Material m) { return Shape(parent, name, PrimitiveType.Cylinder, p, s, m); }
 
+    public static readonly string[] CarPrefixes = { "GT", "F1", "Muscle" };
+
     public static Transform Car(Transform parent, int color) {
-        var prefab = Resources.Load<GameObject>("Cars/Car_" + (color % 5));
+        return Car(parent, 0, color);
+    }
+
+    public static Transform Car(Transform parent, int model, int color) {
+        string prefix = CarPrefixes[Mathf.Clamp(model, 0, CarPrefixes.Length - 1)];
+        var prefab = Resources.Load<GameObject>("Cars/" + prefix + "_" + (color % 5));
+        if (prefab == null) {
+            prefab = Resources.Load<GameObject>("Cars/Car_" + (color % 5));
+        }
         if (prefab != null) {
             var instance = Object.Instantiate(prefab, parent);
             instance.name = "Carrosserie_3D";

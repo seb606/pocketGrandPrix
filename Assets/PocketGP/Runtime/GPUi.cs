@@ -154,8 +154,22 @@ public sealed class GPUi : MonoBehaviour {
             Button(c, dif[i], new Vector2((i - 1) * 204, 38), new Vector2(194, 48), () => { game.Difficulty = k; ShowMenu(); }, game.Difficulty == i);
         }
 
-        string[] names = { "Corail", "Menthe", "Citron", "Lilas", "Rose" };
-        Button(c, "Voiture : " + names[game.ColorIndex] + "   >", new Vector2(0, -22), new Vector2(604, 48), () => { game.ColorIndex = (game.ColorIndex + 1) % 5; game.BuildWorld(game.TrackIndex); ShowMenu(); });
+        string[] carModels = { "🏎️ Supercar GT", "🏁 Formule 1", "🚗 Muscle Car" };
+        string[] names = { "Rouge", "Cyan", "Jaune", "Bleu", "Rose" };
+        Button(c, "Modèle : " + carModels[game.CarModelIndex] + "  >", new Vector2(-154, -22), new Vector2(296, 48), () => {
+            game.CarModelIndex = (game.CarModelIndex + 1) % 3;
+            PlayerPrefs.SetInt("car_model", game.CarModelIndex);
+            PlayerPrefs.Save();
+            game.BuildWorld(game.TrackIndex);
+            ShowMenu();
+        });
+        Button(c, "Couleur : " + names[game.ColorIndex] + "  >", new Vector2(154, -22), new Vector2(296, 48), () => {
+            game.ColorIndex = (game.ColorIndex + 1) % 5;
+            PlayerPrefs.SetInt("car", game.ColorIndex);
+            PlayerPrefs.Save();
+            game.BuildWorld(game.TrackIndex);
+            ShowMenu();
+        });
 
         Button(c, "COURSE RAPIDE", new Vector2(0, -78), new Vector2(604, 56), () => game.StartRace(), true);
         Button(c, "CHAMPIONNAT · 3 CIRCUITS", new Vector2(0, -140), new Vector2(604, 52), () => game.StartRace(true));

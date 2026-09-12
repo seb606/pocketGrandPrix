@@ -31,7 +31,7 @@ public sealed class GPCar : MonoBehaviour {
     public void Setup(GPRace game, int id) {
         Game = game;
         Id = id;
-        body = GPArt.Car(transform, id == 0 ? game.ColorIndex : id);
+        body = GPArt.Car(transform, game.CarModelIndex, id == 0 ? game.ColorIndex : id);
         var track = game.Track;
         Vector3 f = track.Tangent(0), r = Vector3.Cross(Vector3.up, f);
         transform.position = track.Points[0] - f * (2.5f + (id / 2) * 2.5f) + r * (id % 2 == 0 ? -1.4f : 1.4f);
@@ -197,19 +197,13 @@ public sealed class GPCar : MonoBehaviour {
         boostTime = Mathf.Max(0, boostTime - dt);
         if (boostTime > 0) max *= 1.25f;
 
-        // Effet turbo dynamique : halo lumineux sous le châssis et traînée de plasma d'échappement
+        // Effet turbo : uniquement le halo lumineux bleu sous le châssis
         bool isBoostingNow = isBoosting && Speed > 3.5f;
         if (nitroLight) {
             nitroLight.enabled = isBoostingNow;
             if (isBoostingNow) {
                 nitroLight.intensity = 2.4f + Mathf.PingPong(Time.time * 20f, 0.8f);
             }
-        }
-        if (isBoostingNow) {
-            Vector3 leftExhaust = transform.position - transform.forward * 0.92f - transform.right * 0.30f;
-            Vector3 rightExhaust = transform.position - transform.forward * 0.92f + transform.right * 0.30f;
-            SpawnTurboSpark(leftExhaust);
-            SpawnTurboSpark(rightExhaust);
         }
 
         float targetSpeed = throttle < 0 ? 0 : max * throttle;
@@ -454,18 +448,6 @@ public sealed class GPCar : MonoBehaviour {
             Vector3 vel = new Vector3(Random.Range(-3f, 3f), Random.Range(2f, 5f), Random.Range(-3f, 3f));
             puffs.Add(new Puff { t = s.transform, life = 0.25f, maxLife = 0.25f, vel = vel });
         }
-    }
-
-    void SpawnTurboSpark(Vector3 pos) {
-        if (puffs.Count > 50) return;
-        var s = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        s.name = "Plasma";
-        Destroy(s.GetComponent<Collider>());
-        s.transform.position = pos + Vector3.up * 0.22f;
-        s.transform.localScale = Vector3.one * Random.Range(0.14f, 0.26f);
-        s.GetComponent<Renderer>().sharedMaterial = GPArt.Mat(Random.value < 0.65f ? "00F0FF" : "FFA000", 1f);
-        Vector3 vel = -transform.forward * Random.Range(7f, 15f) + Random.insideUnitSphere * 0.8f;
-        puffs.Add(new Puff { t = s.transform, life = 0.24f, maxLife = 0.24f, vel = vel });
     }
 
     void OnDestroy() {

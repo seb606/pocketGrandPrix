@@ -13,7 +13,7 @@ public sealed class GPRace : MonoBehaviour {
     public GPAudio Audio;
     public GPWeapons Weapons;
     public List<GPCar> Cars = new List<GPCar>();
-    public int TrackIndex, Difficulty = 1, ColorIndex, Score, ChampionshipPoints, ResultPlace;
+    public int TrackIndex, Difficulty = 1, ColorIndex, CarModelIndex, Score, ChampionshipPoints, ResultPlace;
     public bool Championship, MobileMode;
     public float RaceTime, Countdown, FinalTime;
     public Camera Cam;
@@ -59,7 +59,12 @@ public sealed class GPRace : MonoBehaviour {
 
         Difficulty = PlayerPrefs.GetInt("difficulty", 1);
         ColorIndex = PlayerPrefs.GetInt("car", 0);
+        CarModelIndex = PlayerPrefs.GetInt("car_model", 0);
         MobileMode = PlayerPrefs.GetInt("display_mode", 0) == 1;
+
+        QualitySettings.SetQualityLevel(5, true);
+        QualitySettings.antiAliasing = 4;
+        QualitySettings.anisotropicFiltering = AnisotropicFiltering.ForceEnable;
 
         var c = new GameObject("Camera");
         Cam = c.AddComponent<Camera>();
@@ -286,23 +291,26 @@ public sealed class GPRace : MonoBehaviour {
             }
         }
 
+        if (State == GPState.Racing) {
+            float dt = Mathf.Min(Time.deltaTime, 0.04f);
+            RaceTime += dt;
+
+            foreach (var car in Cars) {
+                car.Step(dt);
+                if (State != GPState.Racing) break;
+            }
+
+            if (State == GPState.Racing) {
+                if (Weapons) Weapons.Step(dt);
+                StepPhysics(dt);
+            }
+        }
+
         Audio.Engine(Cars.Count > 0 ? Cars[0].Speed : 0, State == GPState.Racing);
         UI.Refresh();
     }
 
-    void FixedUpdate() {
-        if (State != GPState.Racing) return;
-        float dt = Time.fixedDeltaTime;
-        RaceTime += dt;
-
-        foreach (var car in Cars) {
-            car.Step(dt);
-            if (State != GPState.Racing) break;
-        }
-        if (State != GPState.Racing) return;
-
-        if (Weapons) Weapons.Step(dt);
-
+    void StepPhysics(float dt) {
         for (int i = 0; i < Cars.Count; i++) {
             for (int j = i + 1; j < Cars.Count; j++) {
                 if (Cars[i].FinishTime >= 0 || Cars[j].FinishTime >= 0) continue;
@@ -381,12 +389,12 @@ public sealed class GPRace : MonoBehaviour {
     void LateUpdate() {
         if (!Cam || Cars.Count == 0) return;
         bool menu = State == GPState.Menu;
-        Vector3 target = menu ? new Vector3(0, 42, -22) : Cars[0].transform.position + Cars[0].Velocity * .22f + new Vector3(0, 21, -12);
-        Cam.transform.position = Vector3.Lerp(Cam.transform.position, target, 1 - Mathf.Exp(-Time.unscaledDeltaTime * 6));
+        Vector3 target = menu ? new Vector3(0, 42, -22) : Cars[0].transform.position + Cars[0].Velocity * .18f + new Vector3(0, 21, -12);
+        Cam.transform.position = Vector3.Lerp(Cam.transform.position, target, 1 - Mathf.Exp(-Time.unscaledDeltaTime * 10f));
         Cam.transform.rotation = Quaternion.Euler(menu ? 60 : 58, 0, 0);
-        float boostSurge = (!menu && Cars.Count > 0 && Cars[0].Speed > 18f ? 1.4f : 0f);
+        float boostSurge = (!menu && Cars.Count > 0 ? Mathf.Clamp01((Cars[0].Speed - 16f) / 10f) * 1.2f : 0f);
         float size = menu ? 24 : Mathf.Max(10.5f, 6.8f / Mathf.Max(.45f, Cam.aspect)) + Cars[0].Speed * .06f + boostSurge;
-        Cam.orthographicSize = Mathf.Lerp(Cam.orthographicSize, size, Time.unscaledDeltaTime * 4.5f);
+        Cam.orthographicSize = Mathf.Lerp(Cam.orthographicSize, size, Time.unscaledDeltaTime * 5f);
     }
 
     void OnApplicationFocus(bool focus) {
