@@ -1,0 +1,218 @@
+[
+  {
+    "track": 1,
+    "difficulty": 0,
+    "ai": 1,
+    "seconds": 37.64
+  },
+  {
+    "track": 1,
+    "difficulty": 0,
+    "ai": 2,
+    "seconds": 37.92
+  },
+  {
+    "track": 1,
+    "difficulty": 0,
+    "ai": 3,
+    "seconds": 38.1
+  },
+  {
+    "track": 1,
+    "difficulty": 0,
+    "ai": 4,
+    "seconds": 38.38
+  },
+  {
+    "track": 1,
+    "difficulty": 1,
+    "ai": 1,
+    "seconds": 34.9
+  },
+  {
+    "track": 1,
+    "difficulty": 1,
+    "ai": 2,
+    "seconds": 35.16
+  },
+  {
+    "track": 1,
+    "difficulty": 1,
+    "ai": 3,
+    "seconds": 35.36
+  },
+  {
+    "track": 1,
+    "difficulty": 1,
+    "ai": 4,
+    "seconds": 35.66
+  },
+  {
+    "track": 1,
+    "difficulty": 2,
+    "ai": 1,
+    "seconds": 32.58
+  },
+  {
+    "track": 1,
+    "difficulty": 2,
+    "ai": 2,
+    "seconds": 32.86
+  },
+  {
+    "track": 1,
+    "difficulty": 2,
+    "ai": 3,
+    "seconds": 33.06
+  },
+  {
+    "track": 1,
+    "difficulty": 2,
+    "ai": 4,
+    "seconds": 33.34
+  },
+  {
+    "track": 2,
+    "difficulty": 0,
+    "ai": 1,
+    "seconds": 52.6
+  },
+  {
+    "track": 2,
+    "difficulty": 0,
+    "ai": 2,
+    "seconds": 52.86
+  },
+  {
+    "track": 2,
+    "difficulty": 0,
+    "ai": 3,
+    "seconds": 53.04
+  },
+  {
+    "track": 2,
+    "difficulty": 0,
+    "ai": 4,
+    "seconds": 53.34
+  },
+  {
+    "track": 2,
+    "difficulty": 1,
+    "ai": 1,
+    "seconds": 49.58
+  },
+  {
+    "track": 2,
+    "difficulty": 1,
+    "ai": 2,
+    "seconds": 49.64
+  },
+  {
+    "track": 2,
+    "difficulty": 1,
+    "ai": 3,
+    "seconds": 50.16
+  },
+  {
+    "track": 2,
+    "difficulty": 1,
+    "ai": 4,
+    "seconds": 50.8
+  },
+  {
+    "track": 2,
+    "difficulty": 2,
+    "ai": 1,
+    "seconds": 46.9
+  },
+  {
+    "track": 2,
+    "difficulty": 2,
+    "ai": 2,
+    "seconds": 47.32
+  },
+  {
+    "track": 2,
+    "difficulty": 2,
+    "ai": 3,
+    "seconds": 51.16
+  },
+  {
+    "track": 2,
+    "difficulty": 2,
+    "ai": 4,
+    "seconds": 48.86
+  },
+  {
+    "track": 3,
+    "difficulty": 0,
+    "ai": 1,
+    "seconds": 55.58
+  },
+  {
+    "track": 3,
+    "difficulty": 0,
+    "ai": 2,
+    "seconds": 55.96
+  },
+  {
+    "track": 3,
+    "difficulty": 0,
+    "ai": 3,
+    "seconds": 56.28
+  },
+  {
+    "track": 3,
+    "difficulty": 0,
+    "ai": 4,
+    "seconds": 57.26
+  },
+  {
+    "track": 3,
+    "difficulty": 1,
+    "ai": 1,
+    "seconds": 53.42
+  },
+  {
+    "track": 3,
+    "difficulty": 1,
+    "ai": 2,
+    "seconds": 54.5
+  },
+  {
+    "track": 3,
+    "difficulty": 1,
+    "ai": 3,
+    "seconds": 64.9
+  },
+  {
+    "track": 3,
+    "difficulty": 1,
+    "ai": 4,
+    "seconds": 67.28
+  },
+  {
+    "track": 3,
+    "difficulty": 2,
+    "ai": 1,
+    "seconds": 63.62
+  },
+  {
+    "track": 3,
+    "difficulty": 2,
+    "ai": 2,
+    "seconds": 64.16
+  },
+  {
+    "track": 3,
+    "difficulty": 2,
+    "ai": 3,
+    "seconds": 65.38
+  },
+  {
+    "track": 3,
+    "difficulty": 2,
+    "ai": 4,
+    "seconds": 66.18
+  }
+]
