@@ -68,8 +68,9 @@ public sealed class GPRace : MonoBehaviour {
 
         RenderSettings.ambientLight = GPArt.Hex("ABBCCB");
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-        QualitySettings.shadowDistance = 65;
-        QualitySettings.antiAliasing = 2;
+        QualitySettings.shadowDistance = 75;
+        QualitySettings.shadowResolution = ShadowResolution.High;
+        QualitySettings.antiAliasing = 4;
 
         Audio = gameObject.AddComponent<GPAudio>();
         Weapons = gameObject.AddComponent<GPWeapons>();

@@ -3,7 +3,7 @@ using UnityEngine;
 namespace PocketGP {
 public sealed class GPAudio : MonoBehaviour {
     AudioSource music, engine, skid, turbo, fx;
-    AudioClip beep, coin, shootClip, explodeClip, splatClip, lapClip, itemClip;
+    AudioClip beep, coin, shootClip, explodeClip, splatClip, lapClip, itemClip, turboBlast;
     float musicVolume = .35f, effectsVolume = .65f;
 
     public float MusicVolume {
@@ -89,14 +89,15 @@ public sealed class GPAudio : MonoBehaviour {
         skid.volume = 0;
         skid.Play();
 
-        // Bruit de turbo (whoosh / réacteur)
-        int turboLen = rate / 2;
+        // Bruit de turbo (turbine supersonique + réacteur puissant)
+        int turboLen = rate;
         float[] turboSamples = new float[turboLen];
         for (int i = 0; i < turboLen; i++) {
             float t = i / (float)rate;
-            float n = (Mathf.Repeat(Mathf.Sin(i * 9.123f + t * 133.456f) * 31415.9f, 1f) - 0.5f);
-            float tone = Mathf.Sin(2 * Mathf.PI * 280 * t) + 0.3f * Mathf.Sin(2 * Mathf.PI * 560 * t);
-            turboSamples[i] = (n * 0.55f + tone * 0.3f) * 0.4f;
+            float noise = (Mathf.Repeat(Mathf.Sin(i * 13.123f + t * 243.456f) * 43758.5453f, 1f) - 0.5f);
+            float whine = Mathf.Sin(2 * Mathf.PI * 540 * t) * 0.35f + Mathf.Sin(2 * Mathf.PI * 1080 * t) * 0.2f + Mathf.Sin(2 * Mathf.PI * 546 * t) * 0.15f;
+            float roar = Mathf.Sin(2 * Mathf.PI * 72 * t) * 0.4f + Mathf.Sin(2 * Mathf.PI * 144 * t) * 0.25f;
+            turboSamples[i] = (noise * 0.45f + whine + roar) * 0.5f;
         }
         turbo.clip = AudioClip.Create("Turbo", turboLen, 1, rate, false);
         turbo.clip.SetData(turboSamples, 0);
@@ -110,6 +111,7 @@ public sealed class GPAudio : MonoBehaviour {
         splatClip = BuildSplat(rate);
         lapClip = BuildLap(rate);
         itemClip = BuildItemGet(rate);
+        turboBlast = BuildTurboBlast(rate);
     }
 
     AudioClip BuildShoot(int rate) {
@@ -179,6 +181,21 @@ public sealed class GPAudio : MonoBehaviour {
         return c;
     }
 
+    AudioClip BuildTurboBlast(int rate) {
+        int len = (int)(rate * 0.35f);
+        float[] s = new float[len];
+        for (int i = 0; i < len; i++) {
+            float t = i / (float)rate;
+            float freq = Mathf.Lerp(140, 720, Mathf.Pow(t / 0.35f, 0.45f));
+            float n = (Mathf.Repeat(Mathf.Sin(i * 7.77f + t * 88.9f) * 12345.6f, 1f) - 0.5f);
+            float sine = Mathf.Sin(2 * Mathf.PI * freq * t);
+            s[i] = (sine * 0.6f + n * 0.5f) * Mathf.Pow(1 - t / 0.35f, 1.4f) * 0.75f;
+        }
+        var c = AudioClip.Create("TurboBlast", len, 1, rate, false);
+        c.SetData(s, 0);
+        return c;
+    }
+
     public void StartAudio() {
         if (!music.isPlaying) music.Play();
         if (!engine.isPlaying) engine.Play();
@@ -190,13 +207,16 @@ public sealed class GPAudio : MonoBehaviour {
     }
 
     public void SetSkid(bool active, float intensity) {
-        skid.volume = active ? effectsVolume * Mathf.Clamp01(intensity) * 0.5f : 0;
-        skid.pitch = 0.9f + intensity * 0.35f;
+        skid.volume = active ? effectsVolume * Mathf.Clamp01(intensity) * 0.65f : 0;
+        skid.pitch = 0.95f + intensity * 0.45f;
     }
 
     public void SetTurbo(bool active) {
-        turbo.volume = active ? effectsVolume * 0.45f : 0;
-        turbo.pitch = active ? 1.25f : 1.0f;
+        if (active && turbo.volume <= 0.05f && turboBlast) {
+            fx.PlayOneShot(turboBlast, effectsVolume * 0.85f);
+        }
+        turbo.volume = active ? effectsVolume * 0.75f : 0;
+        turbo.pitch = active ? 1.35f : 1.0f;
     }
 
     public void Beep(bool pickup = false) { fx.PlayOneShot(pickup ? coin : beep); }

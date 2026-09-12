@@ -13,7 +13,7 @@
 <button id="fullscreen" aria-label="Passer en plein écran">PLEIN ÉCRAN</button></div>
 <script>
 const canvas=document.getElementById('unity-canvas');let instance;
-const config={dataUrl:'Build/{{{ DATA_FILENAME }}}',frameworkUrl:'Build/{{{ FRAMEWORK_FILENAME }}}',codeUrl:'Build/{{{ CODE_FILENAME }}}',streamingAssetsUrl:'StreamingAssets',companyName:'Pocket Studio',productName:'Pocket Grand Prix',productVersion:'1.0.0',devicePixelRatio:Math.min(window.devicePixelRatio||1,1.5)};
+const config={dataUrl:'Build/{{{ DATA_FILENAME }}}',frameworkUrl:'Build/{{{ FRAMEWORK_FILENAME }}}',codeUrl:'Build/{{{ CODE_FILENAME }}}',streamingAssetsUrl:'StreamingAssets',companyName:'Pocket Studio',productName:'Pocket Grand Prix',productVersion:'1.0.0',devicePixelRatio:window.devicePixelRatio||1};
 const status=document.getElementById('status'),error=document.getElementById('error');
 function failed(message){status.textContent='Le jeu n’a pas pu démarrer.';error.textContent=String(message)+'\nVérifier que tous les fichiers Build sont en ligne et que WebGL 2 est disponible.';document.getElementById('launch').textContent='RÉESSAYER';document.getElementById('launch').hidden=false;}
 document.getElementById('launch').onclick=()=>{if(error.textContent){location.reload();return;}document.getElementById('launch').hidden=true;status.textContent='Chargement du circuit…';const script=document.createElement('script');script.src='Build/{{{ LOADER_FILENAME }}}';script.onerror=()=>failed('Impossible de charger le moteur Unity.');script.onload=()=>{createUnityInstance(canvas,config,p=>document.getElementById('progress').value=p).then(game=>{instance=game;document.getElementById('loading').style.display='none';canvas.focus();}).catch(failed);};document.body.appendChild(script);};
