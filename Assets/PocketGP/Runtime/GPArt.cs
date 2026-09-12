@@ -141,11 +141,14 @@ public static class GPArt {
         var root = new GameObject("Flamme Turbo");
         root.transform.SetParent(parent, false);
         root.transform.localPosition = localPos;
-        var plume = Cylinder(root.transform, "Plume", new Vector3(0, 0, -.52f), new Vector3(.22f, .55f, .22f), Mat("FF4400", .95f));
+        // Plume principale bleue cyan électrique
+        var plume = Cylinder(root.transform, "Plume", new Vector3(0, 0, -.65f), new Vector3(.24f, .75f, .24f), Mat("00E5FF", .95f));
         plume.transform.localRotation = Quaternion.Euler(90, 0, 0);
-        var mid = Cylinder(root.transform, "Mid", new Vector3(0, 0, -.40f), new Vector3(.15f, .42f, .15f), Mat("FFCC00", .98f));
+        // Flamme intermédiaire dorée
+        var mid = Cylinder(root.transform, "Mid", new Vector3(0, 0, -.48f), new Vector3(.18f, .55f, .18f), Mat("FFB800", .95f));
         mid.transform.localRotation = Quaternion.Euler(90, 0, 0);
-        var core = Cylinder(root.transform, "Coeur", new Vector3(0, 0, -.28f), new Vector3(.09f, .30f, .09f), Mat("00F6FF", 1f));
+        // Cœur plasma blanc chaud
+        var core = Cylinder(root.transform, "Coeur", new Vector3(0, 0, -.32f), new Vector3(.11f, .38f, .11f), Mat("FFFFFF", 1f));
         core.transform.localRotation = Quaternion.Euler(90, 0, 0);
         root.SetActive(false);
         return root;
@@ -154,35 +157,138 @@ public static class GPArt {
     public static GameObject JumpRamp(Transform parent) {
         var root = new GameObject("Tremplin");
         root.transform.SetParent(parent, false);
-        var baseMat = Mat("F5B700", .85f, .1f);
+
+        // Corps solide en biseau reposant intégralement sur le sol (Y = 0)
+        float w = 3.6f, l = 3.2f, h0 = 0.02f, h1 = 0.82f;
+        var wedgeMesh = CreateWedgeMesh(w, l, h0, h1);
+        var body = new GameObject("Corps_Tremplin");
+        body.transform.SetParent(root.transform, false);
+        var mf = body.AddComponent<MeshFilter>();
+        mf.sharedMesh = wedgeMesh;
+        var mr = body.AddComponent<MeshRenderer>();
+        mr.sharedMaterial = Mat("F5B700", .65f, .1f);
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+        mr.receiveShadows = true;
+
+        // Bandes de guidage et chevrons sur la surface inclinée
+        float angle = Mathf.Atan2(h1 - h0, l) * Mathf.Rad2Deg;
         var stripeMat = Mat("1A232E", .4f);
-        var ramp = Box(root.transform, "Planche", new Vector3(0, .26f, 0), new Vector3(3.2f, .14f, 2.4f), baseMat);
-        ramp.transform.localRotation = Quaternion.Euler(-15, 0, 0);
-        for (int k = -1; k <= 1; k++) {
-            Box(ramp.transform, "Bande", new Vector3(k * 0.85f, .078f, 0), new Vector3(.28f, .02f, 2.38f), stripeMat);
+        var yellowMat = Mat("F5B700", .8f);
+
+        // Rebords de sécurité latéraux solides
+        for (int side = -1; side <= 1; side += 2) {
+            var curbMesh = CreateWedgeMesh(0.24f, l + 0.1f, h0 + 0.22f, h1 + 0.28f);
+            var curb = new GameObject(side < 0 ? "Rebord_G" : "Rebord_D");
+            curb.transform.SetParent(root.transform, false);
+            curb.transform.localPosition = new Vector3(side * (w * 0.5f - 0.12f), 0, 0);
+            var cmf = curb.AddComponent<MeshFilter>();
+            cmf.sharedMesh = curbMesh;
+            var cmr = curb.AddComponent<MeshRenderer>();
+            cmr.sharedMaterial = stripeMat;
+            cmr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+            cmr.receiveShadows = true;
         }
-        var sideL = Box(root.transform, "BordG", new Vector3(-1.62f, .30f, 0), new Vector3(.14f, .38f, 2.4f), stripeMat);
-        sideL.transform.localRotation = Quaternion.Euler(-15, 0, 0);
-        var sideR = Box(root.transform, "BordD", new Vector3(1.62f, .30f, 0), new Vector3(.14f, .38f, 2.4f), stripeMat);
-        sideR.transform.localRotation = Quaternion.Euler(-15, 0, 0);
+
+        // Flèches d'accélération orientées sur la pente
+        for (int k = -1; k <= 1; k++) {
+            float zRel = k * 0.72f;
+            float t = (zRel + l * 0.5f) / l;
+            float yRel = Mathf.Lerp(h0, h1, t) + 0.015f;
+            var arrow = Box(root.transform, "Fleche_" + k, new Vector3(0, yRel, zRel), new Vector3(1.6f, .03f, .28f), stripeMat);
+            arrow.transform.localRotation = Quaternion.Euler(-angle, 0, 0);
+        }
+
         return root;
+    }
+
+    public static Mesh CreateWedgeMesh(float width, float length, float h0, float h1) {
+        var mesh = new Mesh { name = "Wedge" };
+        float w2 = width * 0.5f, l2 = length * 0.5f;
+
+        Vector3 p0 = new Vector3(-w2, 0, -l2); // sol avant gauche
+        Vector3 p1 = new Vector3( w2, 0, -l2); // sol avant droit
+        Vector3 p2 = new Vector3( w2, 0,  l2); // sol arrière droit
+        Vector3 p3 = new Vector3(-w2, 0,  l2); // sol arrière gauche
+        Vector3 p4 = new Vector3(-w2, h0, -l2); // crête avant gauche
+        Vector3 p5 = new Vector3( w2, h0, -l2); // crête avant droit
+        Vector3 p6 = new Vector3( w2, h1,  l2); // crête arrière droit
+        Vector3 p7 = new Vector3(-w2, h1,  l2); // crête arrière gauche
+
+        var verts = new List<Vector3>();
+        var tris = new List<int>();
+
+        System.Action<Vector3, Vector3, Vector3, Vector3> addQuad = (a, b, c, d) => {
+            int idx = verts.Count;
+            verts.Add(a); verts.Add(b); verts.Add(c); verts.Add(d);
+            tris.Add(idx); tris.Add(idx + 1); tris.Add(idx + 2);
+            tris.Add(idx); tris.Add(idx + 2); tris.Add(idx + 3);
+        };
+
+        // Dessus incliné
+        addQuad(p4, p5, p6, p7);
+        // Sol
+        addQuad(p3, p2, p1, p0);
+        // Mur arrière vertical
+        addQuad(p7, p6, p2, p3);
+        // Entrée avant
+        addQuad(p0, p1, p5, p4);
+        // Côté gauche
+        addQuad(p3, p0, p4, p7);
+        // Côté droit
+        addQuad(p1, p2, p6, p5);
+
+        mesh.SetVertices(verts);
+        mesh.SetTriangles(tris, 0);
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        return mesh;
     }
 
     public static GameObject TrafficCone(Transform parent) {
         var root = new GameObject("Cone");
         root.transform.SetParent(parent, false);
-        Box(root.transform, "Socle", new Vector3(0, .05f, 0), new Vector3(.65f, .1f, .65f), Mat("FF4500", .7f));
-        Cylinder(root.transform, "ConeCorps", new Vector3(0, .45f, 0), new Vector3(.38f, .8f, .38f), Mat("FF4500", .7f));
-        Cylinder(root.transform, "BandeBlanche", new Vector3(0, .42f, 0), new Vector3(.40f, .22f, .40f), Mat("FFFFFF", .9f));
+
+        // Socle noir lesté à bords biseautés
+        Box(root.transform, "SocleLeste", new Vector3(0, .04f, 0), new Vector3(.76f, .08f, .76f), Mat("1A1A1A", .4f));
+        Box(root.transform, "SocleBase", new Vector3(0, .085f, 0), new Vector3(.66f, .03f, .66f), Mat("FF4800", .6f));
+
+        // Corps du cône conique effilé
+        Cylinder(root.transform, "ConeBase", new Vector3(0, .24f, 0), new Vector3(.44f, .30f, .44f), Mat("FF4800", .6f));
+        Cylinder(root.transform, "Bande1", new Vector3(0, .42f, 0), new Vector3(.35f, .16f, .35f), Mat("FFFFFF", .85f, .1f));
+        Cylinder(root.transform, "ConeMilieu", new Vector3(0, .54f, 0), new Vector3(.28f, .14f, .28f), Mat("FF4800", .6f));
+        Cylinder(root.transform, "Bande2", new Vector3(0, .66f, 0), new Vector3(.22f, .14f, .22f), Mat("FFFFFF", .85f, .1f));
+        Cylinder(root.transform, "ConePointe", new Vector3(0, .78f, 0), new Vector3(.16f, .14f, .16f), Mat("FF4800", .6f));
+        Cylinder(root.transform, "CollierNoir", new Vector3(0, .85f, 0), new Vector3(.11f, .03f, .11f), Mat("1A1A1A", .4f));
+
+        var obs = root.AddComponent<GPObstacle>();
+        obs.IsBarrel = false;
+        obs.Radius = 1.0f;
         return root;
     }
 
     public static GameObject Barrel(Transform parent) {
         var root = new GameObject("Baril");
         root.transform.SetParent(parent, false);
-        Cylinder(root.transform, "Fut", new Vector3(0, .55f, 0), new Vector3(.72f, 1.1f, .72f), Mat("CC2222", .7f));
-        Cylinder(root.transform, "Anneau1", new Vector3(0, .32f, 0), new Vector3(.76f, .1f, .76f), Mat("FFFFFF", .8f));
-        Cylinder(root.transform, "Anneau2", new Vector3(0, .78f, 0), new Vector3(.76f, .1f, .76f), Mat("FFFFFF", .8f));
+
+        var redMat = Mat("D32F2F", .7f, .25f);
+        var rimMat = Mat("2B2D42", .6f, .5f);
+        var hazardMat = Mat("FBC02D", .8f);
+
+        // Fût en acier avec cannelures de renfort
+        Cylinder(root.transform, "CorpsFut", new Vector3(0, .60f, 0), new Vector3(.80f, 1.18f, .80f), redMat);
+        // Rebord supérieur et inférieur
+        Cylinder(root.transform, "RebordHaut", new Vector3(0, 1.18f, 0), new Vector3(.83f, .05f, .83f), rimMat);
+        Cylinder(root.transform, "RebordBas", new Vector3(0, .03f, 0), new Vector3(.83f, .05f, .83f), rimMat);
+        // Bourrelets centraux de sertissage
+        Cylinder(root.transform, "AnneauRenfort1", new Vector3(0, .42f, 0), new Vector3(.84f, .06f, .84f), rimMat);
+        Cylinder(root.transform, "AnneauRenfort2", new Vector3(0, .78f, 0), new Vector3(.84f, .06f, .84f), rimMat);
+        // Bande d'avertissement de sécurité
+        Cylinder(root.transform, "BandeSecurite", new Vector3(0, .60f, 0), new Vector3(.81f, .22f, .81f), hazardMat);
+        Cylinder(root.transform, "BandeNoire", new Vector3(0, .60f, 0), new Vector3(.815f, .08f, .815f), rimMat);
+
+        var obs = root.AddComponent<GPObstacle>();
+        obs.IsBarrel = true;
+        obs.Radius = 1.25f;
         return root;
     }
 

@@ -16,6 +16,7 @@ public sealed class GPCar : MonoBehaviour {
     Transform body;
     TrailRenderer leftTrail, rightTrail;
     GameObject flameL, flameR, shieldObj;
+    Light nitroLight;
     float rescueTimer, boostTime, smoothedSteer, spinTimer, aiItemTimer, smokeTimer;
     Vector3 previous;
 
@@ -44,6 +45,18 @@ public sealed class GPCar : MonoBehaviour {
         // Flammes d'échappement turbo
         flameL = GPArt.Flame(transform, new Vector3(-.31f, .45f, -.89f));
         flameR = GPArt.Flame(transform, new Vector3(.31f, .45f, -.89f));
+
+        // Halo lumineux de turbo sous le châssis
+        var nlObj = new GameObject("HaloTurbo");
+        nlObj.transform.SetParent(transform, false);
+        nlObj.transform.localPosition = new Vector3(0, .25f, -1.0f);
+        nitroLight = nlObj.AddComponent<Light>();
+        nitroLight.type = LightType.Point;
+        nitroLight.color = GPArt.Hex("00F0FF");
+        nitroLight.range = 4.2f;
+        nitroLight.intensity = 2.8f;
+        nitroLight.shadows = LightShadows.None;
+        nitroLight.enabled = false;
 
         // Bouclier
         shieldObj = GPArt.Shield(transform);
@@ -188,15 +201,25 @@ public sealed class GPCar : MonoBehaviour {
         boostTime = Mathf.Max(0, boostTime - dt);
         if (boostTime > 0) max *= 1.25f;
 
-        // Activation visuelle des flammes turbo
+        // Activation visuelle des flammes turbo et halo lumineux
+        bool showFlame = isBoosting && Speed > 4f;
         if (flameL && flameR) {
-            bool showFlame = isBoosting && Speed > 7f;
             flameL.SetActive(showFlame);
             flameR.SetActive(showFlame);
             if (showFlame) {
-                float s = 1f + Mathf.PingPong(Time.time * 25f, 0.4f);
-                flameL.transform.localScale = Vector3.one * s;
-                flameR.transform.localScale = Vector3.one * s;
+                float sx = 1f + Mathf.PingPong(Time.time * 30f, 0.25f);
+                float sz = 1.35f + Mathf.PingPong(Time.time * 45f, 0.65f);
+                flameL.transform.localScale = new Vector3(sx, sx, sz);
+                flameR.transform.localScale = new Vector3(sx, sx, sz);
+                if (Random.value < 0.4f) {
+                    SpawnTurboSpark(transform.position - transform.forward * 1.0f + transform.right * Random.Range(-0.35f, 0.35f));
+                }
+            }
+        }
+        if (nitroLight) {
+            nitroLight.enabled = showFlame;
+            if (showFlame) {
+                nitroLight.intensity = 2.4f + Mathf.PingPong(Time.time * 25f, 0.9f);
             }
         }
 
@@ -442,6 +465,18 @@ public sealed class GPCar : MonoBehaviour {
             Vector3 vel = new Vector3(Random.Range(-3f, 3f), Random.Range(2f, 5f), Random.Range(-3f, 3f));
             puffs.Add(new Puff { t = s.transform, life = 0.25f, maxLife = 0.25f, vel = vel });
         }
+    }
+
+    void SpawnTurboSpark(Vector3 pos) {
+        if (puffs.Count > 40) return;
+        var s = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        s.name = "Plasma";
+        Destroy(s.GetComponent<Collider>());
+        s.transform.position = pos + Vector3.up * 0.22f;
+        s.transform.localScale = Vector3.one * 0.14f;
+        s.GetComponent<Renderer>().sharedMaterial = GPArt.Mat(Random.value < 0.65f ? "00F6FF" : "FFD700", 1f);
+        Vector3 vel = -transform.forward * Random.Range(6f, 13f) + Random.insideUnitSphere * 1.2f;
+        puffs.Add(new Puff { t = s.transform, life = 0.22f, maxLife = 0.22f, vel = vel });
     }
 
     void OnDestroy() {

@@ -36,6 +36,7 @@ public sealed class GPRace : MonoBehaviour {
 
     sealed class Hazard {
         public Transform Visual;
+        public GPObstacle Obstacle;
         public Vector3 Position;
         public bool IsRamp;
         public float Radius;
@@ -72,15 +73,21 @@ public sealed class GPRace : MonoBehaviour {
 
         var light = new GameObject("Soleil").AddComponent<Light>();
         light.type = LightType.Directional;
-        light.intensity = 1.15f;
-        light.color = GPArt.Hex("FFF0DC");
-        light.transform.rotation = Quaternion.Euler(52, -32, 0);
+        light.intensity = 1.25f;
+        light.color = GPArt.Hex("FFF4E6");
+        light.transform.rotation = Quaternion.Euler(48, -32, 0);
         light.shadows = LightShadows.Soft;
+        light.shadowStrength = 0.88f;
+        light.shadowBias = 0.02f;
+        light.shadowNormalBias = 0.1f;
+        light.shadowNearPlane = 0.1f;
 
-        RenderSettings.ambientLight = GPArt.Hex("ABBCCB");
+        RenderSettings.ambientLight = GPArt.Hex("667585");
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-        QualitySettings.shadowDistance = 75;
-        QualitySettings.shadowResolution = ShadowResolution.High;
+        QualitySettings.shadowDistance = 45;
+        QualitySettings.shadowCascades = 4;
+        QualitySettings.shadowResolution = ShadowResolution.VeryHigh;
+        QualitySettings.shadowProjection = ShadowProjection.CloseFit;
         QualitySettings.antiAliasing = 4;
 
         Audio = gameObject.AddComponent<GPAudio>();
@@ -164,7 +171,8 @@ public sealed class GPRace : MonoBehaviour {
             var obs = isBarrel ? GPArt.Barrel(world) : GPArt.TrafficCone(world);
             obs.transform.position = obsPos;
             obs.transform.rotation = Quaternion.Euler(0, Random.Range(0, 360), 0);
-            hazards.Add(new Hazard { Visual = obs.transform, Position = obsPos, IsRamp = false, Radius = isBarrel ? 1.4f : 1.2f });
+            var obstacleComp = obs.GetComponent<GPObstacle>();
+            hazards.Add(new Hazard { Visual = obs.transform, Obstacle = obstacleComp, Position = obsPos, IsRamp = false, Radius = isBarrel ? 1.35f : 1.05f });
         }
 
         Cam.transform.position = new Vector3(0, 65, -35);
@@ -319,34 +327,20 @@ public sealed class GPRace : MonoBehaviour {
         }
         if (bumpSoundCooldown > 0) bumpSoundCooldown -= dt;
 
-        // Interaction avec les tremplins et obstacles
+        // Interaction avec les tremplins et obstacles physiques
         foreach (var h in hazards) {
-            if (h.Respawn > 0) {
-                h.Respawn -= dt;
-                h.Visual.gameObject.SetActive(h.Respawn <= 0);
-                if (h.Respawn <= 0) {
-                    h.Visual.position = h.Position;
-                }
-                continue;
-            }
-
             foreach (var car in Cars) {
                 if (car.FinishTime >= 0) continue;
                 float d = Vector3.Distance(car.transform.position, h.Visual.position);
                 if (d < h.Radius) {
                     if (h.IsRamp) {
-                        // Tremplin : propulsion en l'air si la voiture avance vers le tremplin
+                        // Tremplin : propulsion en l'air si abordé dans le sens de la pente
                         if (Vector3.Dot(car.Velocity, h.Visual.forward) > 2f) {
-                            car.Jump(14f);
+                            car.Jump(14.5f);
                         }
-                    } else {
-                        // Percussion d'obstacle
-                        Vector3 push = (car.transform.position - h.Position).normalized;
-                        if (push.sqrMagnitude < 0.01f) push = car.transform.forward;
-                        car.HitObstacle(push * 4.5f);
-                        h.Visual.position += car.transform.forward * 2.2f + Vector3.up * 1.2f;
-                        h.Visual.rotation = Quaternion.Euler(Random.Range(-35, 35), Random.Range(0, 360), Random.Range(-35, 35));
-                        h.Respawn = 4.5f;
+                    } else if (h.Obstacle) {
+                        // Collision physique avec le cône ou le baril
+                        h.Obstacle.OnCarHit(car);
                     }
                     break;
                 }
@@ -390,8 +384,9 @@ public sealed class GPRace : MonoBehaviour {
         Vector3 target = menu ? new Vector3(0, 42, -22) : Cars[0].transform.position + Cars[0].Velocity * .22f + new Vector3(0, 21, -12);
         Cam.transform.position = Vector3.Lerp(Cam.transform.position, target, 1 - Mathf.Exp(-Time.unscaledDeltaTime * 6));
         Cam.transform.rotation = Quaternion.Euler(menu ? 60 : 58, 0, 0);
-        float size = menu ? 24 : Mathf.Max(10.5f, 6.8f / Mathf.Max(.45f, Cam.aspect)) + Cars[0].Speed * .06f;
-        Cam.orthographicSize = Mathf.Lerp(Cam.orthographicSize, size, Time.unscaledDeltaTime * 3);
+        float boostSurge = (!menu && Cars.Count > 0 && Cars[0].Speed > 18f ? 1.4f : 0f);
+        float size = menu ? 24 : Mathf.Max(10.5f, 6.8f / Mathf.Max(.45f, Cam.aspect)) + Cars[0].Speed * .06f + boostSurge;
+        Cam.orthographicSize = Mathf.Lerp(Cam.orthographicSize, size, Time.unscaledDeltaTime * 4.5f);
     }
 
     void OnApplicationFocus(bool focus) {

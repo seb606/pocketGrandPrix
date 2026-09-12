@@ -90,20 +90,11 @@ public static class GPSetupCars {
             foreach (var r in carRoot.GetComponentsInChildren<Renderer>()) {
                 carBounds.Encapsulate(r.bounds);
                 r.sharedMaterial = mats[i];
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                r.receiveShadows = true;
             }
             float yOffset = -carBounds.min.y;
             visual.transform.localPosition = new Vector3(0, yOffset, 0);
-
-            // Ombre de contact douce au sol
-            var shadow = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            shadow.name = "OmbreSol";
-            shadow.transform.SetParent(carRoot.transform, false);
-            shadow.transform.localPosition = new Vector3(0, 0.018f, 0);
-            shadow.transform.localScale = new Vector3(carBounds.size.x * 0.95f, 0.015f, carBounds.size.z * 0.95f);
-            Object.DestroyImmediate(shadow.GetComponent<Collider>());
-            var shadowMat = new Material(shader);
-            shadowMat.color = new Color(0.04f, 0.08f, 0.12f, 0.7f);
-            shadow.GetComponent<Renderer>().sharedMaterial = shadowMat;
 
             string prefabPath = resDir + "/Car_" + i + ".prefab";
             PrefabUtility.SaveAsPrefabAsset(carRoot, prefabPath);
