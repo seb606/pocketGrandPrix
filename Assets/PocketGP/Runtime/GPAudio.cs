@@ -85,18 +85,23 @@ public sealed class GPAudio : MonoBehaviour {
         engine.clip.SetData(hum, 0);
         engine.loop = true;
 
-        // Bruit de dérapage réaliste (frottement gomme asphalte + flutter 42Hz)
-        int skidLen = rate;
-        float[] skidSamples = new float[skidLen];
-        for (int i = 0; i < skidLen; i++) {
-            float t = i / (float)rate;
-            float noise = (Mathf.Repeat(Mathf.Sin(i * 12.9898f + t * 78.233f) * 43758.5453f, 1f) - 0.5f);
-            float slipFlutter = 0.65f + 0.35f * Mathf.Sin(2 * Mathf.PI * 42f * t);
-            float chirp = Mathf.Sin(2 * Mathf.PI * 2240f * t) * 0.4f + Mathf.Sin(2 * Mathf.PI * 2890f * t) * 0.25f;
-            skidSamples[i] = (noise * 0.55f + chirp * 0.45f) * slipFlutter * 0.45f;
+        // Bruit de dérapage réaliste (chargement du fichier WAV utilisateur s'il existe)
+        var resSkid = Resources.Load<AudioClip>("Audio/skid_loop");
+        if (resSkid) {
+            skid.clip = resSkid;
+        } else {
+            int skidLen = rate;
+            float[] skidSamples = new float[skidLen];
+            for (int i = 0; i < skidLen; i++) {
+                float t = i / (float)rate;
+                float noise = (Mathf.Repeat(Mathf.Sin(i * 12.9898f + t * 78.233f) * 43758.5453f, 1f) - 0.5f);
+                float slipFlutter = 0.65f + 0.35f * Mathf.Sin(2 * Mathf.PI * 42f * t);
+                float chirp = Mathf.Sin(2 * Mathf.PI * 2240f * t) * 0.4f + Mathf.Sin(2 * Mathf.PI * 2890f * t) * 0.25f;
+                skidSamples[i] = (noise * 0.55f + chirp * 0.45f) * slipFlutter * 0.45f;
+            }
+            skid.clip = AudioClip.Create("Derapage", skidLen, 1, rate, false);
+            skid.clip.SetData(skidSamples, 0);
         }
-        skid.clip = AudioClip.Create("Derapage", skidLen, 1, rate, false);
-        skid.clip.SetData(skidSamples, 0);
         skid.loop = true;
         skid.volume = 0;
         skid.Play();
@@ -327,8 +332,8 @@ public sealed class GPAudio : MonoBehaviour {
     }
 
     public void SetSkid(bool active, float intensity) {
-        skid.volume = active ? effectsVolume * Mathf.Clamp01(intensity) * 0.75f : 0;
-        skid.pitch = 0.95f + intensity * 0.45f;
+        skid.volume = active ? effectsVolume * Mathf.Clamp01(intensity) * 0.70f : 0;
+        skid.pitch = 0.95f + Mathf.Clamp01(intensity) * 0.20f;
     }
 
     public void SetTurbo(bool active, float speed = 0) {
