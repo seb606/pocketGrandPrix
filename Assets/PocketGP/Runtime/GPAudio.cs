@@ -1,10 +1,21 @@
 using UnityEngine;
+using UnityEngine.Networking;
+using System.Collections;
 
 namespace PocketGP {
 public sealed class GPAudio : MonoBehaviour {
     AudioSource music, engine, skid, turbo, fx;
-    AudioClip beep, coin, shootClip, explodeClip, splatClip, lapClip, itemClip, turboBlast;
+    AudioClip beep, coin, shootClip, explodeClip, splatClip, lapClip, itemClip, turboBlast, blowOffClip;
     float musicVolume = .35f, effectsVolume = .65f;
+    bool wasTurbo;
+
+    readonly string[] mp3Files = {
+        "track1_turbo_rush.mp3",
+        "track2_neon_drift.mp3",
+        "track3_cyber_grandprix.mp3"
+    };
+    int currentTrackIndex = -1;
+    bool audioStarted;
 
     public float MusicVolume {
         get { return musicVolume; }
@@ -45,7 +56,7 @@ public sealed class GPAudio : MonoBehaviour {
 
         const int rate = 22050;
 
-        // Musique
+        // Musique de secours procédurale (avant chargement du MP3)
         int total = rate * 16;
         float[] data = new float[total];
         int[] notes = { 0, 7, 12, 7, 3, 10, 15, 10, 5, 12, 17, 12, 7, 14, 19, 14 };
@@ -74,14 +85,15 @@ public sealed class GPAudio : MonoBehaviour {
         engine.clip.SetData(hum, 0);
         engine.loop = true;
 
-        // Bruit de dérapage (crissement de pneu)
-        int skidLen = rate / 2;
+        // Bruit de dérapage réaliste (frottement gomme asphalte + flutter de glissement 42Hz)
+        int skidLen = rate;
         float[] skidSamples = new float[skidLen];
         for (int i = 0; i < skidLen; i++) {
             float t = i / (float)rate;
-            float n = (Mathf.Repeat(Mathf.Sin(i * 12.9898f + t * 78.233f) * 43758.5453f, 1f) - 0.5f);
-            float mod = Mathf.Sin(2 * Mathf.PI * 850 * t) + 0.5f * Mathf.Sin(2 * Mathf.PI * 1420 * t);
-            skidSamples[i] = (n * 0.4f + mod * 0.35f) * 0.35f;
+            float noise = (Mathf.Repeat(Mathf.Sin(i * 12.9898f + t * 78.233f) * 43758.5453f, 1f) - 0.5f);
+            float slipFlutter = 0.65f + 0.35f * Mathf.Sin(2 * Mathf.PI * 42f * t);
+            float chirp = Mathf.Sin(2 * Mathf.PI * 2240f * t) * 0.4f + Mathf.Sin(2 * Mathf.PI * 2890f * t) * 0.25f;
+            skidSamples[i] = (noise * 0.55f + chirp * 0.45f) * slipFlutter * 0.45f;
         }
         skid.clip = AudioClip.Create("Derapage", skidLen, 1, rate, false);
         skid.clip.SetData(skidSamples, 0);
@@ -89,15 +101,15 @@ public sealed class GPAudio : MonoBehaviour {
         skid.volume = 0;
         skid.Play();
 
-        // Bruit de turbo (turbine supersonique + réacteur puissant)
+        // Bruit de turbo (turbine supersonique + grondement suralimenté)
         int turboLen = rate;
         float[] turboSamples = new float[turboLen];
         for (int i = 0; i < turboLen; i++) {
             float t = i / (float)rate;
-            float noise = (Mathf.Repeat(Mathf.Sin(i * 13.123f + t * 243.456f) * 43758.5453f, 1f) - 0.5f);
-            float whine = Mathf.Sin(2 * Mathf.PI * 540 * t) * 0.35f + Mathf.Sin(2 * Mathf.PI * 1080 * t) * 0.2f + Mathf.Sin(2 * Mathf.PI * 546 * t) * 0.15f;
-            float roar = Mathf.Sin(2 * Mathf.PI * 72 * t) * 0.4f + Mathf.Sin(2 * Mathf.PI * 144 * t) * 0.25f;
-            turboSamples[i] = (noise * 0.45f + whine + roar) * 0.5f;
+            float noise = (Mathf.Repeat(Mathf.Sin(i * 15.34f + t * 312.4f) * 43758.5453f, 1f) - 0.5f);
+            float whine = Mathf.Sin(2 * Mathf.PI * 3200f * t) * 0.32f + Mathf.Sin(2 * Mathf.PI * 6400f * t) * 0.18f;
+            float roar = Mathf.Sin(2 * Mathf.PI * 85f * t) * 0.35f + Mathf.Sin(2 * Mathf.PI * 170f * t) * 0.22f;
+            turboSamples[i] = (noise * 0.4f + whine + roar) * 0.55f;
         }
         turbo.clip = AudioClip.Create("Turbo", turboLen, 1, rate, false);
         turbo.clip.SetData(turboSamples, 0);
@@ -112,6 +124,22 @@ public sealed class GPAudio : MonoBehaviour {
         lapClip = BuildLap(rate);
         itemClip = BuildItemGet(rate);
         turboBlast = BuildTurboBlast(rate);
+        blowOffClip = BuildBlowOff(rate);
+    }
+
+    AudioClip BuildBlowOff(int rate) {
+        int len = (int)(rate * 0.35f);
+        float[] s = new float[len];
+        for (int i = 0; i < len; i++) {
+            float t = i / (float)rate;
+            float n = (Mathf.Repeat(Mathf.Sin(i * 9.21f + t * 145.8f) * 31415.9f, 1f) - 0.5f);
+            float flutter = 0.5f + 0.5f * Mathf.Sin(2 * Mathf.PI * 34f * t);
+            float env = Mathf.Exp(-t * 9.5f);
+            s[i] = n * flutter * env * 0.85f;
+        }
+        var c = AudioClip.Create("BlowOff", len, 1, rate, false);
+        c.SetData(s, 0);
+        return c;
     }
 
     AudioClip BuildShoot(int rate) {
@@ -197,8 +225,49 @@ public sealed class GPAudio : MonoBehaviour {
     }
 
     public void StartAudio() {
-        if (!music.isPlaying) music.Play();
+        if (!audioStarted) {
+            audioStarted = true;
+            if (!music.isPlaying) music.Play();
+            StartCoroutine(PlayRandomMp3());
+        }
         if (!engine.isPlaying) engine.Play();
+    }
+
+    public void NextTrack() {
+        StartCoroutine(PlayRandomMp3());
+    }
+
+    IEnumerator PlayRandomMp3() {
+        if (mp3Files == null || mp3Files.Length == 0) yield break;
+        int next = Random.Range(0, mp3Files.Length);
+        if (next == currentTrackIndex && mp3Files.Length > 1) {
+            next = (next + 1) % mp3Files.Length;
+        }
+        currentTrackIndex = next;
+        string filename = mp3Files[currentTrackIndex];
+
+        string url;
+        #if !UNITY_EDITOR && UNITY_WEBGL
+        url = "StreamingAssets/Music/" + filename;
+        #else
+        url = System.IO.Path.Combine(Application.streamingAssetsPath, "Music", filename);
+        if (!url.StartsWith("file://") && !url.StartsWith("http://") && !url.StartsWith("https://")) {
+            url = "file://" + url;
+        }
+        #endif
+
+        using (var req = UnityWebRequestMultimedia.GetAudioClip(url, AudioType.MPEG)) {
+            yield return req.SendWebRequest();
+            if (req.result == UnityWebRequest.Result.Success) {
+                var clip = DownloadHandlerAudioClip.GetContent(req);
+                if (clip) {
+                    music.clip = clip;
+                    music.loop = true;
+                    music.volume = musicVolume;
+                    music.Play();
+                }
+            }
+        }
     }
 
     public void Engine(float speed, bool active) {
@@ -207,16 +276,19 @@ public sealed class GPAudio : MonoBehaviour {
     }
 
     public void SetSkid(bool active, float intensity) {
-        skid.volume = active ? effectsVolume * Mathf.Clamp01(intensity) * 0.65f : 0;
+        skid.volume = active ? effectsVolume * Mathf.Clamp01(intensity) * 0.75f : 0;
         skid.pitch = 0.95f + intensity * 0.45f;
     }
 
     public void SetTurbo(bool active) {
-        if (active && turbo.volume <= 0.05f && turboBlast) {
-            fx.PlayOneShot(turboBlast, effectsVolume * 0.85f);
+        if (active && !wasTurbo && turboBlast) {
+            fx.PlayOneShot(turboBlast, effectsVolume * 0.9f);
+        } else if (!active && wasTurbo && blowOffClip) {
+            fx.PlayOneShot(blowOffClip, effectsVolume * 0.85f);
         }
-        turbo.volume = active ? effectsVolume * 0.75f : 0;
-        turbo.pitch = active ? 1.35f : 1.0f;
+        wasTurbo = active;
+        turbo.volume = active ? effectsVolume * 0.8f : 0;
+        turbo.pitch = active ? 1.42f : 1.0f;
     }
 
     public void Beep(bool pickup = false) { fx.PlayOneShot(pickup ? coin : beep); }

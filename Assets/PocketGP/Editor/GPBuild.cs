@@ -19,7 +19,8 @@ public static class GPBuild {
     public static void Configure(){
         PlayerSettings.companyName="Pocket Studio";PlayerSettings.productName="Pocket Grand Prix";PlayerSettings.bundleVersion="1.0.0";
         PlayerSettings.colorSpace=ColorSpace.Linear;PlayerSettings.runInBackground=false;
-        PlayerSettings.defaultScreenWidth=1280;PlayerSettings.defaultScreenHeight=720;
+        PlayerSettings.defaultScreenWidth=1920;PlayerSettings.defaultScreenHeight=1080;
+        PlayerSettings.defaultWebScreenWidth=1920;PlayerSettings.defaultWebScreenHeight=1080;
         PlayerSettings.WebGL.template="PROJECT:PocketGP";
         // Uncompressed output is deliberately portable to basic static hosting.
         PlayerSettings.WebGL.compressionFormat=WebGLCompressionFormat.Disabled;
@@ -27,7 +28,7 @@ public static class GPBuild {
         PlayerSettings.WebGL.decompressionFallback=false;
         var settings=new SerializedObject(Unsupported.GetSerializedAssetInterfaceSingleton("PlayerSettings"));
         var input=settings.FindProperty("activeInputHandler");if(input!=null){input.intValue=0;settings.ApplyModifiedPropertiesWithoutUndo();}
-        QualitySettings.shadows=ShadowQuality.All;QualitySettings.shadowResolution=ShadowResolution.Medium;QualitySettings.shadowCascades=0;QualitySettings.antiAliasing=2;
+        QualitySettings.shadows=ShadowQuality.All;QualitySettings.shadowResolution=ShadowResolution.High;QualitySettings.shadowCascades=2;QualitySettings.antiAliasing=4;
         EditorBuildSettings.scenes=new[]{new EditorBuildSettingsScene(Scene,true)};
         AssetDatabase.SaveAssets();
     }

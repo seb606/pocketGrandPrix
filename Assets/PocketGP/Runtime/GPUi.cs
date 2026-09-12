@@ -128,10 +128,10 @@ public sealed class GPUi : MonoBehaviour {
         veil.rectTransform.anchorMin = Vector2.zero;
         veil.rectTransform.anchorMax = Vector2.one;
         veil.rectTransform.offsetMin = veil.rectTransform.offsetMax = Vector2.zero;
-        var card = Block(layer, new Vector2(.5f, .5f), Vector2.zero, new Vector2(680, 840), new Color(panel.r, panel.g, panel.b, .98f)).rectTransform;
-        Block(card, new Vector2(.5f, .5f), new Vector2(0, 414), new Vector2(680, 12), mint);
-        Txt(card, eyebrow, new Vector2(0, 362), new Vector2(620, 30), 18, mint);
-        Txt(card, title, new Vector2(0, 308), new Vector2(640, 80), 40, ink);
+        var card = Block(layer, new Vector2(.5f, .5f), Vector2.zero, new Vector2(680, 880), new Color(panel.r, panel.g, panel.b, .98f)).rectTransform;
+        Block(card, new Vector2(.5f, .5f), new Vector2(0, 434), new Vector2(680, 12), mint);
+        Txt(card, eyebrow, new Vector2(0, 382), new Vector2(620, 30), 18, mint);
+        Txt(card, title, new Vector2(0, 328), new Vector2(640, 80), 40, ink);
         return card;
     }
 
@@ -157,13 +157,22 @@ public sealed class GPUi : MonoBehaviour {
         string[] names = { "Corail", "Menthe", "Citron", "Lilas", "Rose" };
         Button(c, "Voiture : " + names[game.ColorIndex] + "   >", new Vector2(0, -22), new Vector2(604, 48), () => { game.ColorIndex = (game.ColorIndex + 1) % 5; game.BuildWorld(game.TrackIndex); ShowMenu(); });
 
-        Button(c, "COURSE RAPIDE", new Vector2(0, -88), new Vector2(604, 60), () => game.StartRace(), true);
-        Button(c, "CHAMPIONNAT · 3 CIRCUITS", new Vector2(0, -156), new Vector2(604, 56), () => game.StartRace(true));
-        Button(c, "🏆  CLASSEMENT · TOP 10", new Vector2(0, -222), new Vector2(604, 54), () => ShowLeaderboard(game.TrackIndex));
+        Button(c, "COURSE RAPIDE", new Vector2(0, -78), new Vector2(604, 56), () => game.StartRace(), true);
+        Button(c, "CHAMPIONNAT · 3 CIRCUITS", new Vector2(0, -140), new Vector2(604, 52), () => game.StartRace(true));
+        Button(c, "🏆  CLASSEMENT · TOP 10", new Vector2(0, -198), new Vector2(604, 48), () => ShowLeaderboard(game.TrackIndex));
 
-        Button(c, "Comment jouer", new Vector2(-154, -286), new Vector2(296, 48), ShowHelp);
-        Button(c, "Audio & affichage", new Vector2(154, -286), new Vector2(296, 48), () => ShowSettings(false));
-        Txt(c, "Accélération automatique · clavier ou écran tactile", new Vector2(0, -345), new Vector2(620, 45), 18, muted);
+        Button(c, game.MobileMode ? "AFFICHAGE : 📱 TÉLÉPHONE (PAYSAGE)" : "AFFICHAGE : 🖥️ ORDINATEUR", new Vector2(0, -252), new Vector2(604, 46), () => {
+            game.MobileMode = !game.MobileMode;
+            PlayerPrefs.SetInt("display_mode", game.MobileMode ? 1 : 0);
+            PlayerPrefs.Save();
+            ShowMenu();
+        });
+
+        Button(c, "Comment jouer", new Vector2(-154, -304), new Vector2(296, 44), ShowHelp);
+        Button(c, "Audio & affichage", new Vector2(154, -304), new Vector2(296, 44), () => ShowSettings(false));
+
+        Button(c, "🚪  QUITTER LE JEU", new Vector2(0, -356), new Vector2(604, 44), QuitGame);
+        Txt(c, game.MobileMode ? "Mode paysage recommandé · commandes tactiles à l'écran" : "Contrôles clavier ZQSD / Flèches", new Vector2(0, -398), new Vector2(620, 30), 16, muted);
     }
 
     public void ShowLeaderboard(int trackFilter = 0) {
@@ -266,15 +275,34 @@ public sealed class GPUi : MonoBehaviour {
         count = Txt(layer, "", new Vector2(0, 30), new Vector2(500, 150), 110, ink);
         notice = Txt(layer, "", new Vector2(0, 145), new Vector2(680, 55), 27, mint);
 
-        // Flèches tactiles "<" et ">" bien visibles
-        Hold("<", new Vector2(0, 0), new Vector2(76, 87), new Vector2(112, 115), v => left = v);
-        Hold(">", new Vector2(0, 0), new Vector2(200, 87), new Vector2(112, 115), v => right = v);
+        if (game.MobileMode) {
+            // Commandes tactiles optimisées pour téléphone en mode paysage
+            Hold("<", new Vector2(0, 0), new Vector2(85, 95), new Vector2(125, 125), v => left = v);
+            Hold(">", new Vector2(0, 0), new Vector2(225, 95), new Vector2(125, 125), v => right = v);
 
-        // Bouton ARME pour mobile
-        Hold("ARME", new Vector2(1, 0), new Vector2(-425, 78), new Vector2(105, 96), v => { if (v) ItemTrigger = true; });
-        Hold("FREIN", new Vector2(1, 0), new Vector2(-308, 78), new Vector2(108, 96), v => Brake = v);
-        Hold("DRIFT", new Vector2(1, 0), new Vector2(-186, 78), new Vector2(118, 96), v => Drift = v);
-        Hold("TURBO", new Vector2(1, 0), new Vector2(-65, 100), new Vector2(112, 140), v => Boost = v);
+            Hold("ARME", new Vector2(1, 0), new Vector2(-420, 85), new Vector2(110, 105), v => { if (v) ItemTrigger = true; });
+            Hold("FREIN", new Vector2(1, 0), new Vector2(-300, 85), new Vector2(110, 105), v => Brake = v);
+            Hold("DRIFT", new Vector2(1, 0), new Vector2(-180, 85), new Vector2(115, 105), v => Drift = v);
+            Hold("TURBO", new Vector2(1, 0), new Vector2(-60, 105), new Vector2(115, 145), v => Boost = v);
+        } else {
+            // Mode ordinateur : interface épurée sans boutons tactiles, avec guide clavier
+            Txt(layer, "[Q / D ou ◄ / ►] Direction   ·   [S ou ▼] Freiner   ·   [ESPACE] Dérapage   ·   [MAJ] Turbo   ·   [E] Arme", new Vector2(0, 24), new Vector2(1100, 36), 18, muted);
+        }
+    }
+
+    public void QuitGame() {
+        #if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+        #else
+        Application.Quit();
+        #endif
+        ShowQuitScreen();
+    }
+
+    public void ShowQuitScreen() {
+        var c = Card("AU REVOIR", "POCKET GRAND PRIX");
+        Txt(c, "Merci d'avoir joué à Pocket Grand Prix !\n\nVous pouvez fermer cet onglet ou retourner au jeu.", new Vector2(0, 40), new Vector2(600, 140), 24, ink);
+        Button(c, "RETOURNER AU MENU", new Vector2(0, -120), new Vector2(604, 60), ShowMenu, true);
     }
 
     public void ShowPause() {

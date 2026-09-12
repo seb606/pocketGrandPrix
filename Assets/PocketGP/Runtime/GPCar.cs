@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 namespace PocketGP {
 public sealed class GPCar : MonoBehaviour {
@@ -14,8 +15,16 @@ public sealed class GPCar : MonoBehaviour {
     Transform body;
     TrailRenderer leftTrail, rightTrail;
     GameObject flameL, flameR, shieldObj;
-    float rescueTimer, boostTime, smoothedSteer, spinTimer, aiItemTimer;
+    float rescueTimer, boostTime, smoothedSteer, spinTimer, aiItemTimer, smokeTimer;
     Vector3 previous;
+
+    struct Puff {
+        public Transform t;
+        public float life;
+        public float maxLife;
+        public Vector3 vel;
+    }
+    readonly List<Puff> puffs = new List<Puff>();
 
     public void Setup(GPRace game, int id) {
         Game = game;
@@ -32,8 +41,8 @@ public sealed class GPCar : MonoBehaviour {
         rightTrail = Trail(.4f);
 
         // Flammes d'échappement turbo
-        flameL = GPArt.Flame(transform, new Vector3(-.32f, .45f, -.88f));
-        flameR = GPArt.Flame(transform, new Vector3(.32f, .45f, -.88f));
+        flameL = GPArt.Flame(transform, new Vector3(-.31f, .45f, -.89f));
+        flameR = GPArt.Flame(transform, new Vector3(.31f, .45f, -.89f));
 
         // Bouclier
         shieldObj = GPArt.Shield(transform);
@@ -184,6 +193,29 @@ public sealed class GPCar : MonoBehaviour {
             Game.Audio.SetTurbo(isBoosting);
         }
 
+        // Gestion des volutes de fumée de pneu au dérapage
+        if (sliding || spinTimer > 0) {
+            smokeTimer -= dt;
+            if (smokeTimer <= 0) {
+                smokeTimer = 0.045f;
+                SpawnSmoke(transform.position - transform.forward * 0.5f - transform.right * 0.4f);
+                SpawnSmoke(transform.position - transform.forward * 0.5f + transform.right * 0.4f);
+            }
+        }
+        for (int i = puffs.Count - 1; i >= 0; i--) {
+            var p = puffs[i];
+            p.life -= dt;
+            if (p.life <= 0 || !p.t) {
+                if (p.t) Destroy(p.t.gameObject);
+                puffs.RemoveAt(i);
+            } else {
+                p.t.position += p.vel * dt;
+                float progress = 1f - (p.life / p.maxLife);
+                p.t.localScale = Vector3.one * Mathf.Lerp(0.18f, 0.65f, progress);
+                puffs[i] = p;
+            }
+        }
+
         previous = transform.position;
         transform.position += Velocity * dt;
         body.localRotation = Quaternion.Euler(Mathf.Sin(Time.time * 22) * Speed * .025f, 0, -smoothedSteer * Speed * .32f);
@@ -269,6 +301,7 @@ public sealed class GPCar : MonoBehaviour {
             if (Human) Game.Notify("BOUCLIER ABSORBÉ !");
             return;
         }
+        SpawnSparks(transform.position);
         spinTimer = 0.9f;
         Speed *= 0.35f;
         Velocity = force;
@@ -282,6 +315,7 @@ public sealed class GPCar : MonoBehaviour {
             if (Human) Game.Notify("BOUCLIER ABSORBÉ !");
             return;
         }
+        SpawnSparks(transform.position);
         spinTimer = 0.85f;
         Speed *= 0.3f;
         if (Human) Game.Notify("TÊTE-À-QUEUE !");
@@ -309,6 +343,38 @@ public sealed class GPCar : MonoBehaviour {
             Game.Notify("TURBO !");
             Game.Audio.PlayShoot();
         }
+    }
+
+    void SpawnSmoke(Vector3 pos) {
+        if (puffs.Count > 40) return;
+        var s = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        s.name = "Fumee";
+        Destroy(s.GetComponent<Collider>());
+        s.transform.position = pos + Vector3.up * 0.12f;
+        s.transform.localScale = Vector3.one * 0.18f;
+        s.GetComponent<Renderer>().sharedMaterial = GPArt.Mat("E2ECF0", 0.1f);
+        Vector3 vel = new Vector3(Random.Range(-0.4f, 0.4f), Random.Range(0.7f, 1.5f), Random.Range(-0.4f, 0.4f)) - Velocity * 0.12f;
+        puffs.Add(new Puff { t = s.transform, life = 0.4f, maxLife = 0.4f, vel = vel });
+    }
+
+    public void SpawnSparks(Vector3 pos) {
+        for (int k = 0; k < 6; k++) {
+            var s = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            s.name = "Etincelle";
+            Destroy(s.GetComponent<Collider>());
+            s.transform.position = pos + Vector3.up * 0.25f;
+            s.transform.localScale = Vector3.one * 0.12f;
+            s.GetComponent<Renderer>().sharedMaterial = GPArt.Mat("FFD700", 1f);
+            Vector3 vel = new Vector3(Random.Range(-3f, 3f), Random.Range(2f, 5f), Random.Range(-3f, 3f));
+            puffs.Add(new Puff { t = s.transform, life = 0.25f, maxLife = 0.25f, vel = vel });
+        }
+    }
+
+    void OnDestroy() {
+        foreach (var p in puffs) {
+            if (p.t) Destroy(p.t.gameObject);
+        }
+        puffs.Clear();
     }
 }
 }

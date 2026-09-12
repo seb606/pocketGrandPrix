@@ -14,7 +14,7 @@ public sealed class GPRace : MonoBehaviour {
     public GPWeapons Weapons;
     public List<GPCar> Cars = new List<GPCar>();
     public int TrackIndex, Difficulty = 1, ColorIndex, Score, ChampionshipPoints, ResultPlace;
-    public bool Championship;
+    public bool Championship, MobileMode;
     public float RaceTime, Countdown, FinalTime;
     public Camera Cam;
     Transform world;
@@ -48,12 +48,13 @@ public sealed class GPRace : MonoBehaviour {
 
         Difficulty = PlayerPrefs.GetInt("difficulty", 1);
         ColorIndex = PlayerPrefs.GetInt("car", 0);
+        MobileMode = PlayerPrefs.GetInt("display_mode", 0) == 1;
 
         var c = new GameObject("Camera");
         Cam = c.AddComponent<Camera>();
         c.AddComponent<AudioListener>();
         Cam.orthographic = true;
-        Cam.orthographicSize = 23;
+        Cam.orthographicSize = 12;
         Cam.nearClipPlane = .1f;
         Cam.farClipPlane = 180;
         Cam.backgroundColor = GPArt.Hex("A8C6D0");
@@ -145,6 +146,7 @@ public sealed class GPRace : MonoBehaviour {
 
     void Launch() {
         Audio.StartAudio();
+        Audio.NextTrack();
         PlayerPrefs.SetInt("difficulty", Difficulty);
         PlayerPrefs.SetInt("car", ColorIndex);
         PlayerPrefs.Save();
@@ -307,10 +309,10 @@ public sealed class GPRace : MonoBehaviour {
     void LateUpdate() {
         if (!Cam || Cars.Count == 0) return;
         bool menu = State == GPState.Menu;
-        Vector3 target = menu ? new Vector3(0, 60, -29) : Cars[0].transform.position + Cars[0].Velocity * .28f + new Vector3(0, 31, -17);
+        Vector3 target = menu ? new Vector3(0, 42, -22) : Cars[0].transform.position + Cars[0].Velocity * .22f + new Vector3(0, 21, -12);
         Cam.transform.position = Vector3.Lerp(Cam.transform.position, target, 1 - Mathf.Exp(-Time.unscaledDeltaTime * 6));
-        Cam.transform.rotation = Quaternion.Euler(menu ? 64 : 62, 0, 0);
-        float size = menu ? 43 : Mathf.Max(18, 11 / Mathf.Max(.4f, Cam.aspect)) + Cars[0].Speed * .10f;
+        Cam.transform.rotation = Quaternion.Euler(menu ? 60 : 58, 0, 0);
+        float size = menu ? 24 : Mathf.Max(10.5f, 6.8f / Mathf.Max(.45f, Cam.aspect)) + Cars[0].Speed * .06f;
         Cam.orthographicSize = Mathf.Lerp(Cam.orthographicSize, size, Time.unscaledDeltaTime * 3);
     }
 

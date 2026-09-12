@@ -40,30 +40,50 @@ public static class GPArt {
     public static GameObject Cylinder(Transform parent, string name, Vector3 p, Vector3 s, Material m) { return Shape(parent, name, PrimitiveType.Cylinder, p, s, m); }
 
     public static Transform Car(Transform parent, int color) {
-        string[] colors = { "FF684D", "45DCD3", "FCCB54", "A290FF", "F078B8" };
+        string[] colors = { "FF4838", "2BE4D8", "FFC83B", "9A7BFF", "FF5AA8" };
         var root = new GameObject("Carrosserie").transform;
         root.SetParent(parent, false);
-        var paint = Mat(colors[color % 5], .8f, .3f);
-        var black = Mat("152B3A", .45f);
-        var glass = Mat("25596B", .9f, .4f);
-        var white = Mat("FFF5DA", .8f);
+        var paint = Mat(colors[color % 5], .85f, .25f);
+        var black = Mat("0F1E28", .4f);
+        var glass = Mat("1C3B4E", .95f, .5f);
+        var white = Mat("FFFBF0", .8f);
+        var chrome = Mat("DCEEF5", .95f, .85f);
+        var shadow = Mat("081017", .15f);
 
-        Box(root, "Chassis", new Vector3(0, .27f, 0), new Vector3(.94f, .23f, 1.7f), black);
-        Sphere(root, "Carrosserie arrondie", new Vector3(0, .48f, 0), new Vector3(1.06f, .65f, 1.85f), paint);
-        Box(root, "Capot", new Vector3(0, .51f, .55f), new Vector3(.86f, .2f, .65f), paint);
-        Sphere(root, "Verriere", new Vector3(0, .75f, -.13f), new Vector3(.77f, .59f, .88f), glass);
-        Box(root, "Toit", new Vector3(0, .97f, -.23f), new Vector3(.61f, .075f, .40f), paint);
-        Box(root, "Bande capot", new Vector3(0, .626f, .59f), new Vector3(.14f, .025f, .56f), white);
-        Box(root, "Bande toit", new Vector3(0, 1.015f, -.23f), new Vector3(.14f, .018f, .38f), white);
-        Box(root, "Aileron", new Vector3(0, .73f, -.78f), new Vector3(1.13f, .09f, .19f), paint);
+        // Ombre de contact au sol (anti-flou & contraste fort)
+        Box(root, "OmbreSol", new Vector3(0, .018f, 0), new Vector3(1.28f, .012f, 2.15f), shadow);
 
+        // Châssis & carrosserie sculptée haute précision
+        Box(root, "Chassis", new Vector3(0, .26f, 0), new Vector3(.96f, .22f, 1.76f), black);
+        Sphere(root, "Carrosserie galbee", new Vector3(0, .47f, 0), new Vector3(1.08f, .62f, 1.86f), paint);
+        Box(root, "Capot", new Vector3(0, .49f, .55f), new Vector3(.88f, .21f, .68f), paint);
+        Sphere(root, "Cockpit", new Vector3(0, .73f, -.12f), new Vector3(.78f, .58f, .90f), glass);
+        Box(root, "Toit", new Vector3(0, .96f, -.21f), new Vector3(.62f, .075f, .42f), paint);
+        Box(root, "Bande capot", new Vector3(0, .61f, .58f), new Vector3(.15f, .026f, .60f), white);
+        Box(root, "Bande toit", new Vector3(0, 1.005f, -.21f), new Vector3(.15f, .02f, .40f), white);
+
+        // Aileron arrière sport avec montants
+        Box(root, "Aileron", new Vector3(0, .75f, -.80f), new Vector3(1.18f, .085f, .22f), paint);
+        Box(root, "MontantG", new Vector3(-.36f, .60f, -.79f), new Vector3(.045f, .22f, .06f), black);
+        Box(root, "MontantD", new Vector3(.36f, .60f, -.79f), new Vector3(.045f, .22f, .06f), black);
+
+        // Calandre avant sportive
+        Box(root, "Calandre", new Vector3(0, .36f, .90f), new Vector3(.72f, .12f, .05f), black);
+
+        // Sorties d'échappement double chrome
         for (int i = -1; i <= 1; i += 2) {
-            Box(root, "Phare", new Vector3(i * .31f, .49f, .899f), new Vector3(.23f, .14f, .055f), Mat("FFF5BA", .8f));
-            Box(root, "Feu", new Vector3(i * .32f, .45f, -.84f), new Vector3(.23f, .12f, .06f), Mat("FA354B", .8f));
+            var pot = Cylinder(root, "Echappement", new Vector3(i * .31f, .34f, -.89f), new Vector3(.09f, .12f, .09f), chrome);
+            pot.transform.localRotation = Quaternion.Euler(90, 0, 0);
+        }
+
+        // Roues larges & jantes sport brillantes
+        for (int i = -1; i <= 1; i += 2) {
+            Box(root, "Phare", new Vector3(i * .31f, .47f, .91f), new Vector3(.24f, .13f, .055f), Mat("FFFDE6", 1f));
+            Box(root, "Feu", new Vector3(i * .32f, .44f, -.87f), new Vector3(.23f, .12f, .06f), Mat("FF2233", 1f));
             for (int j = -1; j <= 1; j += 2) {
-                var w = Cylinder(root, "Roue", new Vector3(i * .50f, .29f, j * .57f), new Vector3(.47f, .115f, .47f), black);
+                var w = Cylinder(root, "Roue", new Vector3(i * .51f, .28f, j * .57f), new Vector3(.48f, .13f, .48f), black);
                 w.transform.localRotation = Quaternion.Euler(0, 0, 90);
-                var hub = Cylinder(root, "Jante", new Vector3(i * .615f, .29f, j * .57f), new Vector3(.25f, .012f, .25f), Mat("CCDCE4", .9f, .8f));
+                var hub = Cylinder(root, "Jante", new Vector3(i * .625f, .28f, j * .57f), new Vector3(.27f, .015f, .27f), chrome);
                 hub.transform.localRotation = Quaternion.Euler(0, 0, 90);
             }
         }
@@ -112,9 +132,11 @@ public static class GPArt {
         var root = new GameObject("Flamme Turbo");
         root.transform.SetParent(parent, false);
         root.transform.localPosition = localPos;
-        var cone = Cylinder(root.transform, "Cone", new Vector3(0, 0, -.45f), new Vector3(.18f, .42f, .18f), Mat("00F0FF", .95f));
-        cone.transform.localRotation = Quaternion.Euler(90, 0, 0);
-        var core = Cylinder(root.transform, "Coeur", new Vector3(0, 0, -.35f), new Vector3(.11f, .30f, .11f), Mat("FFF89A", .99f));
+        var plume = Cylinder(root.transform, "Plume", new Vector3(0, 0, -.52f), new Vector3(.22f, .55f, .22f), Mat("FF4400", .95f));
+        plume.transform.localRotation = Quaternion.Euler(90, 0, 0);
+        var mid = Cylinder(root.transform, "Mid", new Vector3(0, 0, -.40f), new Vector3(.15f, .42f, .15f), Mat("FFCC00", .98f));
+        mid.transform.localRotation = Quaternion.Euler(90, 0, 0);
+        var core = Cylinder(root.transform, "Coeur", new Vector3(0, 0, -.28f), new Vector3(.09f, .30f, .09f), Mat("00F6FF", 1f));
         core.transform.localRotation = Quaternion.Euler(90, 0, 0);
         root.SetActive(false);
         return root;
